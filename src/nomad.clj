@@ -2,23 +2,25 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]))
 
-(def ^:dynamic *config-file*
+(defn- config-file []
   (io/file (io/resource "nomad-config.edn")))
 
-(defn load-config []
-  (with-meta (read-string (slurp *config-file*))
-    {:as-of (.lastModified *config-file*)}))
+(defn- load-config []
+  (let [file (config-file)]
+    (when (and file (.exists file))
+      (with-meta (read-string (slurp file))
+        {:as-of (.lastModified file)}))))
 
-(def ^:dynamic *config* (ref nil))
+(def ^:private config (ref nil))
 
-(defn latest-config []
+(defn get-config []
   (dosync
-   (alter *config*
+   (alter config
           (fn [current-config]
             (if-not current-config
               (load-config)
               
-              (let [file-mod (.lastModified *config-file*)]
+              (let [file-mod (.lastModified (config-file))]
                 (if (not= file-mod (-> current-config meta :as-of))
                   (load-config)
                     current-config)))))))
@@ -30,3 +32,11 @@
 
 (defn get-host-config []
   (get-in (latest-config) [:hosts (get-hostname)]))
+
+(def ^:private get-instance
+  (memoize
+   (fn []
+     (get (System/getenv) "NOMAD_INSTANCE" :default))))
+
+(defn get-instance-config []
+  (get-in (get-host-config) [:instances (get-instance)]))
