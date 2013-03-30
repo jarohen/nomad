@@ -31,7 +31,7 @@
      (.trim (:out (sh "hostname"))))))
 
 (defn get-host-config []
-  (get-in (latest-config) [:hosts (get-hostname)]))
+  (get-in (get-config) [:hosts (get-hostname)]))
 
 (def ^:private get-instance
   (memoize
