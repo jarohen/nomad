@@ -1,6 +1,7 @@
 # nomad
 
-A Clojure library designed to allow Clojure configuration to travel between hosts.
+A Clojure library designed to allow Clojure configuration to travel
+between hosts.
 
 You can use Nomad to define and access host-specific configuration,
 which can be saved and tracked through your usual version control
@@ -91,7 +92,7 @@ map under the given host:
 
 ```
 
-To differentiate between instances, set the ```NOMAD_INSTANCE```
+To differentiate between insptances, set the ```NOMAD_INSTANCE```
 environment variable before running your application:
 
     NOMAD_INSTANCE="DEV2" lein ring server
@@ -106,6 +107,13 @@ the current instance:
 
 ;; will slurp "/home/me/.dev2/data-file.edn
 ```
+
+## Bugs/features/suggestions/questions?
+
+Please feel free to submit bug reports/patches etc through the GitHub
+repository in the usual way!
+
+Thanks!
 
 ## License
 
