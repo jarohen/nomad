@@ -45,6 +45,28 @@ your-ns.clj:
 ;; -> {:my-key "my-value"}
 ```
 
+### Differentiating between hosts
+
+To differentiate between different hosts, put the configuration for
+each host under a ```:hosts``` key, then under a string key for the given
+hostname, as follows:
+
+```clojure
+{:hosts {"my-laptop" {:key1 "dev-value"}
+         "my-web-server" {:key1 "prod-value"}}}
+```
+
+To access the configuration for the current host, call
+```get-host-config```:
+
+```clojure
+(require '[nomad :refer [get-host-config]])
+
+(:key1 (get-host-config))
+;; On "my-laptop", will return "dev-value"
+;; On "my-web-server", will return "prod-value"
+```
+
 
 ## License
 
