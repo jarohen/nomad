@@ -72,6 +72,38 @@ To access the configuration for the current host, call
 ;; On "my-web-server", will return "prod-value"
 ```
 
+### 'Instances'
+
+Nomad also allows you to set up different 'instances' running on the
+same host. To differentiate between instances, add an ```:instances```
+map under the given host:
+
+```clojure
+{:hosts 
+	{"my-laptop" 
+		{:instances
+			"DEV1"
+				{:data-directory "/home/me/.dev1"}
+			"DEV2"
+				{:data-directory "/home/me/.dev2"}}}}
+
+```
+
+To differentiate between instances, set the ```NOMAD_INSTANCE```
+environment variable before running your application:
+
+    NOMAD_INSTANCE="DEV2" lein ring server
+
+Then, call ```(get-instance-config)``` to get the configuration for
+the current instance:
+
+
+```clojure
+(let [{:keys [data-directory]} (get-instance-config)]
+	(slurp (io/file data-directory "data-file.edn")))
+
+;; will slurp "/home/me/.dev2/data-file.edn
+```
 
 ## License
 
