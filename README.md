@@ -45,6 +45,11 @@ your-ns.clj:
 ;; -> {:my-key "my-value"}
 ```
 
+### Caching
+
+Nomad will cache the configuration where possible, but will
+auto-reload the configuration if the underlying file is modified.
+
 ### Differentiating between hosts
 
 To differentiate between different hosts, put the configuration for
