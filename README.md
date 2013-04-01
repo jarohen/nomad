@@ -28,6 +28,8 @@ called ``nomad-config.edn`` in the root of your classpath. Nomad does
 expect a particular structure for your configuration, however it will
 load any data structure in the file.
 
+1: https://github.com/clojure/edn
+
 To load the data structure in the file, use the ```get-config``` function:
 
 nomad-config.edn:
