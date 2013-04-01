@@ -15,12 +15,35 @@ separate dependency!
 
 ## Usage
 
+### Set-up
+
 Add the ``nomad`` dependency to your ```project.clj```
 
 ```clojure
 [jarohen/nomad "0.1.0"]
 ```
 
+Nomad expects your configuration to be stored in an [1](EDN) file
+called ``nomad-config.edn`` in the root of your classpath. Nomad does
+expect a particular structure for your configuration, however it will
+load any data structure in the file.
+
+To load the data structure in the file, use the ```get-config``` function:
+
+nomad-config.edn:
+
+```clojure
+{:my-key "my-value"}
+```
+
+your-ns.clj:
+
+```clojure
+(require '[nomad :refer [get-config]])
+
+(get-config)
+;; -> {:my-key "my-value"}
+```
 
 
 ## License
