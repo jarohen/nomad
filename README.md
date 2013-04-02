@@ -24,12 +24,12 @@ Add the ``nomad`` dependency to your ```project.clj```
 [jarohen/nomad "0.1.0"]
 ```
 
-Nomad expects your configuration to be stored in an [1](EDN) file
+Nomad expects your configuration to be stored in an [EDN][1] file
 called ``nomad-config.edn`` in the root of your classpath. Nomad does
 expect a particular structure for your configuration, however it will
 load any data structure in the file.
 
-1: https://github.com/clojure/edn
+[1]: https://github.com/edn-format/edn
 
 To load the data structure in the file, use the ```get-config``` function:
 
