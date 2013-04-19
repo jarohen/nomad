@@ -1,0 +1,3 @@
+{:config-key :value
+ :nomad/hosts {"graphite"
+               {:host-config :host-value}}}
