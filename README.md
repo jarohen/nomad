@@ -18,7 +18,7 @@ separate dependency!
 
 ### Set-up
 
-Add the ``nomad`` dependency to your ```project.clj```
+Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 [jarohen/nomad "0.2.0"]
@@ -38,7 +38,7 @@ however it will load any data structure in the file.
 
 [1]: https://github.com/edn-format/edn
 
-To load the data structure in the file, use the ```defconfig``` macro,
+To load the data structure in the file, use the `defconfig` macro,
 passing in either a file or a classpath resource:
 
 nomad-config.edn:
@@ -68,7 +68,7 @@ auto-reload the configuration if the underlying file is modified.
 ### Differentiating between hosts
 
 To differentiate between different hosts, put the configuration for
-each host under a ```:nomad/hosts``` key, then under a string key for the given
+each host under a `:nomad/hosts` key, then under a string key for the given
 hostname, as follows:
 
 ```clojure
@@ -77,7 +77,7 @@ hostname, as follows:
 ```
 
 Nomad will then put the configuration of the current host on the
-```:nomad/current-host``` key in the map:
+`:nomad/current-host` key in the map:
 
 ```clojure
 
@@ -89,7 +89,7 @@ Nomad will then put the configuration of the current host on the
 ### 'Instances'
 
 Nomad also allows you to set up different 'instances' running on the
-same host. To differentiate between instances, add a ```:nomad/instances```
+same host. To differentiate between instances, add a `:nomad/instances`
 map under the given host:
 
 ```clojure
@@ -103,12 +103,12 @@ map under the given host:
 
 ```
 
-To differentiate between instances, set the ```NOMAD_INSTANCE```
+To differentiate between instances, set the `NOMAD_INSTANCE`
 environment variable before running your application:
 
     NOMAD_INSTANCE="DEV2" lein ring server
 
-Then, lookup the ```:nomad/current-instance``` key to get the
+Then, lookup the `:nomad/current-instance` key to get the
 configuration for the current instance:
 
 ```clojure
@@ -131,11 +131,11 @@ Thanks!
 
 0.2.0 has introduced a couple of breaking changes:
 
-* ```get-config```, ```get-host-config``` and
-  ```get-instance-config``` have been removed. Use ```defconfig``` as
-  described above in place of ```get-config```; the current host and
-  instance config now live under the ```:nomad/current-host``` and
-  ```:nomad/current-instance``` keys respectively.
+* `get-config`, `get-host-config` and `get-instance-config` have been
+  removed. Use `defconfig` as described above in place of
+  `get-config`; the current host and instance config now live under
+  the `:nomad/current-host` and `:nomad/current-instance` keys
+  respectively.
 * Previously, Nomad expected your configuration file to be in a
   `nomad-config.edn` file at the root of the classpath. You can now
   specify the file or resource (or many, in fact, if you use several
