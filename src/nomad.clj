@@ -14,13 +14,11 @@
 
 (defprotocol ConfigFile
   (etag [_])
-  (exists? [_])
   (slurp* [_]))
 
 (extend-protocol ConfigFile
   java.io.File
   (etag [f] (.lastModified f))
-  (exists? [f] (.exists f))
   (slurp* [f] (slurp f))
 
   java.net.URL
@@ -32,50 +30,59 @@
       ;; (i.e. in a JAR file)
       url))
 
-  ;; Most people will use (io/resource ...) to get the URL - which
-  ;; returns nil if the resource doesn't exist. So if they do manually
-  ;; specify a URL that doesn't exist, I'm happy with this throwing an
-  ;; exception in load-config rather than returning nil.
-  (exists? [url] true)
   (slurp* [url] (slurp url))
 
   nil
   (etag [_] nil)
-  (exists? [_] false))
+  (slurp* [_] {}))
 
 (defn- with-current-host-config [config]
-  (if-let [host-config (get-in config [:nomad/hosts (get-hostname)])]
-    (assoc config :nomad/current-host host-config)
-    config))
+  (assoc config
+    :nomad/current-host (get-in config [:nomad/hosts (get-hostname)])))
 
 (defn- with-current-instance-config [config]
-  (if-let [instance-config (get-in config [:nomad/current-host
-                                           :nomad/instances
-                                           (get-instance)])]
-    (assoc config :nomad/current-instance instance-config)
-    config))
+  (assoc config
+    :nomad/current-instance (get-in config [:nomad/current-host
+                                            :nomad/instances
+                                            (get-instance)])))
 
-(defn- load-config [config-file]
-  (when (exists? config-file)
-    (-> (with-meta (read-string (slurp* config-file))
-          {:etag (etag config-file)
-           :config-file config-file})
-        with-current-host-config
-        with-current-instance-config)))
+(defn- reload-config-file [config-file]
+  (with-meta (read-string (slurp* config-file))
+    {:old-etag (etag config-file)
+     :config-file config-file}))
 
-(defn- get-current-config [config-ref config-file]
-  (dosync
-   (alter config-ref
-          (fn [current-config]
-            (if-not current-config
-              (load-config config-file)
-              
-              (let [file-etag (etag config-file)]
-                (if (not= file-etag (-> current-config meta :etag))
-                  (load-config config-file)
-                  current-config)))))))
+(defn- update-config-file [current-config]
+  (let [{:keys [old-etag config-file]} (meta current-config)
+        new-etag (etag config-file)]
+    (if (not= old-etag new-etag)
+      (reload-config-file config-file)
+      current-config)))
+
+(defn- with-updated-private-config [config]
+  (update-in config [:nomad/private]
+             (fn [private-config]
+               (letfn [(update-private-config [k]
+                         (update-config-file
+                          (or (get private-config k)
+                              (with-meta {}
+                                {:old-etag ::nil
+                                 :config-file (get-in config [k :nomad/private-file])}))))]
+                 
+                 {:nomad/current-host (update-private-config :nomad/current-host)
+                  :nomad/current-instance (update-private-config :nomad/current-instance)}))))
+
+(defn- update-config [current-config]
+  (-> (update-config-file current-config)
+      with-current-host-config
+      with-current-instance-config
+      with-updated-private-config))
+
+(defn- get-current-config [config-ref]
+  (dosync (alter config-ref update-config)))
 
 (defmacro defconfig [name file-or-resource]
-  `(let [config-ref# (ref nil)]
+  `(let [config-ref# (ref (with-meta {}
+                            {:config-file ~file-or-resource
+                             :etag ::nil}))]
      (defn ~name []
-       (#'get-current-config config-ref# ~file-or-resource))))
+       (#'get-current-config config-ref#))))
