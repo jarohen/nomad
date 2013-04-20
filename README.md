@@ -21,17 +21,25 @@ separate dependency!
 Add the ``nomad`` dependency to your ```project.clj```
 
 ```clojure
+[jarohen/nomad "0.2.0"]
+
+;; legacy
 [jarohen/nomad "0.1.0"]
+
+;; Version 0.2.0 has introduced a couple of breaking changes
+;; since version 0.1.0 - please see 'Changes', below.
+
 ```
 
-Nomad expects your configuration to be stored in an [EDN][1] file
-called ``nomad-config.edn`` in the root of your classpath. Nomad does
-expect a particular structure for your configuration, however it will
-load any data structure in the file.
+
+Nomad expects your configuration to be stored in an [EDN][1]
+file. Nomad does expect a particular structure for your configuration,
+however it will load any data structure in the file.
 
 [1]: https://github.com/edn-format/edn
 
-To load the data structure in the file, use the ```get-config``` function:
+To load the data structure in the file, use the ```defconfig``` macro,
+passing in either a file or a classpath resource:
 
 nomad-config.edn:
 
@@ -39,12 +47,16 @@ nomad-config.edn:
 {:my-key "my-value"}
 ```
 
-your-ns.clj:
+my_ns.clj:
 
 ```clojure
-(require '[nomad :refer [get-config]])
+(ns my-ns
+    (:require [nomad :refer [defconfig]
+              [clojure.java.io :as io]]))
 
-(get-config)
+(defconfig my-config (io/resource "config/my-config.edn"))
+
+(my-config)
 ;; -> {:my-key "my-value"}
 ```
 
@@ -56,21 +68,20 @@ auto-reload the configuration if the underlying file is modified.
 ### Differentiating between hosts
 
 To differentiate between different hosts, put the configuration for
-each host under a ```:hosts``` key, then under a string key for the given
+each host under a ```:nomad/hosts``` key, then under a string key for the given
 hostname, as follows:
 
 ```clojure
-{:hosts {"my-laptop" {:key1 "dev-value"}
-         "my-web-server" {:key1 "prod-value"}}}
+{:nomad/hosts {"my-laptop" {:key1 "dev-value"}
+               "my-web-server" {:key1 "prod-value"}}}
 ```
 
-To access the configuration for the current host, call
-```get-host-config```:
+Nomad will then put the configuration of the current host on the
+```:nomad/current-host``` key in the map:
 
 ```clojure
-(require '[nomad :refer [get-host-config]])
 
-(:key1 (get-host-config))
+(get-in (my-config) [:nomad/current-host :key1])
 ;; On "my-laptop", will return "dev-value"
 ;; On "my-web-server", will return "prod-value"
 ```
@@ -78,13 +89,13 @@ To access the configuration for the current host, call
 ### 'Instances'
 
 Nomad also allows you to set up different 'instances' running on the
-same host. To differentiate between instances, add an ```:instances```
+same host. To differentiate between instances, add a ```:nomad/instances```
 map under the given host:
 
 ```clojure
-{:hosts 
+{:nomad/hosts 
 	{"my-laptop" 
-		{:instances
+		{:nomad/instances
 			"DEV1"
 				{:data-directory "/home/me/.dev1"}
 			"DEV2"
@@ -92,17 +103,16 @@ map under the given host:
 
 ```
 
-To differentiate between insptances, set the ```NOMAD_INSTANCE```
+To differentiate between instances, set the ```NOMAD_INSTANCE```
 environment variable before running your application:
 
     NOMAD_INSTANCE="DEV2" lein ring server
 
-Then, call ```(get-instance-config)``` to get the configuration for
-the current instance:
-
+Then, lookup the ```:nomad/current-instance``` key to get the
+configuration for the current instance:
 
 ```clojure
-(let [{:keys [data-directory]} (get-instance-config)]
+(let [{:keys [data-directory]} (:nomad/current-instance (my-config))]
 	(slurp (io/file data-directory "data-file.edn")))
 
 ;; will slurp "/home/me/.dev2/data-file.edn
@@ -114,6 +124,22 @@ Please feel free to submit bug reports/patches etc through the GitHub
 repository in the usual way!
 
 Thanks!
+
+## Changes
+
+### 0.2.0
+
+0.2.0 has introduced a couple of breaking changes:
+
+* ```get-config```, ```get-host-config``` and
+  ```get-instance-config``` have been removed. Use ```defconfig``` as
+  described above in place of ```get-config```; the current host and
+  instance config now live under the ```:nomad/current-host``` and
+  ```:nomad/current-instance``` keys respectively.
+* Previously, Nomad expected your configuration file to be in a
+  `nomad-config.edn` file at the root of the classpath. You can now
+  specify the file or resource (or many, in fact, if you use several
+  `defconfig` invocations) for Nomad to use.
 
 ## License
 
