@@ -34,17 +34,7 @@
 
   nil
   (etag [_] nil)
-  (slurp* [_] {}))
-
-(defn- with-current-host-config [config]
-  (assoc config
-    :nomad/current-host (get-in config [:nomad/hosts (get-hostname)])))
-
-(defn- with-current-instance-config [config]
-  (assoc config
-    :nomad/current-instance (get-in config [:nomad/current-host
-                                            :nomad/instances
-                                            (get-instance)])))
+  (slurp* [_] (pr-str {})))
 
 (defn- reload-config-file [config-file]
   (with-meta (read-string (slurp* config-file))
@@ -58,18 +48,32 @@
       (reload-config-file config-file)
       current-config)))
 
+(defn- with-current-host-config [config]
+  (assoc config
+    :nomad/current-host (or (get-in config [:nomad/hosts (get-hostname)])
+                            {})))
+
+(defn- with-current-instance-config [config]
+  (assoc config
+    :nomad/current-instance (or (get-in config [:nomad/current-host
+                                                :nomad/instances
+                                                (get-instance)])
+                                {})))
+
 (defn- with-updated-private-config [config]
-  (update-in config [:nomad/private]
-             (fn [private-config]
-               (letfn [(update-private-config [k]
-                         (update-config-file
-                          (or (get private-config k)
-                              (with-meta {}
-                                {:old-etag ::nil
-                                 :config-file (get-in config [k :nomad/private-file])}))))]
+  (update-in
+   config [:nomad/private]
+
+   (fn [private-config]
+     (letfn [(update-private-config [k]
+               (update-config-file
+                (or (get private-config k)
+                    (with-meta {}
+                      {:old-etag ::nil
+                       :config-file (get-in config [k :nomad/private-file])}))))]
                  
-                 {:nomad/current-host (update-private-config :nomad/current-host)
-                  :nomad/current-instance (update-private-config :nomad/current-instance)}))))
+       {:nomad/current-host (update-private-config :nomad/current-host)
+        :nomad/current-instance (update-private-config :nomad/current-instance)}))))
 
 (defn- update-config [current-config]
   (-> (update-config-file current-config)
@@ -83,6 +87,6 @@
 (defmacro defconfig [name file-or-resource]
   `(let [config-ref# (ref (with-meta {}
                             {:config-file ~file-or-resource
-                             :etag ::nil}))]
+                             :old-etag ::nil}))]
      (defn ~name []
        (#'get-current-config config-ref#))))
