@@ -18,7 +18,8 @@
 
 (extend-protocol ConfigFile
   java.io.File
-  (etag [f] (.lastModified f))
+  (etag [f] {:file f
+             :last-mod (.lastModified f)})
   (slurp* [f] (slurp f))
 
   java.net.URL
@@ -28,7 +29,7 @@
 
       ;; otherwise, we presume the config file is read-only
       ;; (i.e. in a JAR file)
-      url))
+      {:url url}))
 
   (slurp* [url] (slurp url))
 
@@ -37,9 +38,11 @@
   (slurp* [_] (pr-str {})))
 
 (defn- reload-config-file [config-file]
-  (with-meta (read-string (slurp* config-file))
-    {:old-etag (etag config-file)
-     :config-file config-file}))
+  (binding [*data-readers* (assoc *data-readers*
+                             'nomad/file io/file)]
+    (with-meta (read-string (slurp* config-file))
+      {:old-etag (etag config-file)
+       :config-file config-file})))
 
 (defn- update-config-file [current-config]
   (let [{:keys [old-etag config-file]} (meta current-config)

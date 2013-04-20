@@ -19,10 +19,9 @@
   (let [config {:my-key :my-val}
         {:keys [my-key]} (#'nomad/update-config
                           (with-meta {}
-                            {:config-file (DummyConfigFile. (constantly nil)
+                            {:config-file (DummyConfigFile. (constantly ::etag)
                                                             (constantly
-                                                             (pr-str config)))
-                             :old-etag ::nil}))]
+                                                             (pr-str config)))}))]
     (test/is (= :my-val my-key))))
 
 (deftest host-config
@@ -30,8 +29,8 @@
                               "not-my-host" {:a 2}}}
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
-                           (with-meta config
-                             {:config-file (DummyConfigFile. (constantly nil)
+                           (with-meta {}
+                             {:config-file (DummyConfigFile. (constantly ::etag)
                                                              (constantly
                                                               (pr-str config)))})))]
     (test/is (= 1 (get-in returned-config [:nomad/current-host :a])))))
@@ -45,7 +44,7 @@
         returned-config (with-hostname "my-host"
                           (with-instance "DEV2"
                             (#'nomad/update-config
-                             (with-meta config
+                             (with-meta {}
                                {:config-file (DummyConfigFile. (constantly ::etag)
                                                                (constantly
                                                                 (pr-str config)))}))))]
@@ -72,3 +71,28 @@
                                                       {:old-etag "old-etag"
                                                        :config-file dummy-config-file}))]
     (test/is (= new-config (select-keys returned-config [:a :b])))))
+
+(defrecord DummyPrivateFile [etag content]
+  nomad/ConfigFile
+  (etag [_] etag)
+  (slurp* [_] (pr-str content)))
+
+(deftest loads-private-config
+  (let [config {:nomad/hosts {"my-host"
+                              {:nomad/private-file
+                               (DummyPrivateFile.
+                                ::etag {:host-private :yes-indeed})
+                               :nomad/instances
+                               {"instance" {:a 1
+                                            :nomad/private-file
+                                            (DummyPrivateFile.
+                                             ::etag {:instance-private :of-course})}}}}}
+        returned-config (with-hostname "my-host"
+                          (with-instance "instance"
+                            (#'nomad/update-config
+                             (with-meta {}
+                               {:config-file (DummyConfigFile. (constantly ::etag)
+                                                               (constantly
+                                                                (pr-str config)))}))))]
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))
+    (test/is (= :of-course (get-in returned-config [:nomad/private :nomad/current-instance :instance-private])))))
