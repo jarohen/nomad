@@ -12,7 +12,7 @@
    (fn []
      (get (System/getenv) "NOMAD_INSTANCE" :default))))
 
-(defprotocol ConfigFile
+(defprotocol ^:private ConfigFile
   (etag [_])
   (exists? [_]))
 
@@ -40,12 +40,12 @@
   (etag [_] nil)
   (exists? [_] false))
 
-(defn with-current-host-config [config]
+(defn- with-current-host-config [config]
   (if-let [host-config (get-in config [:nomad/hosts (get-hostname)])]
     (assoc config :nomad/current-host host-config)
     config))
 
-(defn with-current-instance-config [config]
+(defn- with-current-instance-config [config]
   (if-let [instance-config (get-in config [:nomad/current-host
                                              :nomad/instances
                                              (get-instance)])]
@@ -55,11 +55,12 @@
 (defn- load-config [config-file]
   (when (exists? config-file)
     (-> (with-meta (read-string (slurp config-file))
-          {:etag (etag config-file)})
+          {:etag (etag config-file)
+           :config-file config-file})
         with-current-host-config
         with-current-instance-config)))
 
-(defn get-config [config-ref config-file]
+(defn- get-current-config [config-ref config-file]
   (dosync
    (alter config-ref
           (fn [current-config]
@@ -74,4 +75,4 @@
 (defmacro defconfig [name file-or-resource]
   `(let [config-ref# (ref nil)]
      (defn ~name []
-       (get-config config-ref# ~file-or-resource))))
+       (#'get-current-config config-ref# ~file-or-resource))))
