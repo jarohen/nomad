@@ -47,8 +47,8 @@
 
 (defn- with-current-instance-config [config]
   (if-let [instance-config (get-in config [:nomad/current-host
-                                             :nomad/instances
-                                             (get-instance)])]
+                                           :nomad/instances
+                                           (get-instance)])]
     (assoc config :nomad/current-instance instance-config)
     config))
 
