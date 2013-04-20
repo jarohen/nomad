@@ -2,6 +2,16 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]))
 
+(def ^:private get-hostname
+  (memoize
+   (fn []
+     (.trim (:out (sh "hostname"))))))
+
+(def ^:private get-instance
+  (memoize
+   (fn []
+     (get (System/getenv) "NOMAD_INSTANCE" :default))))
+
 (defprotocol ConfigFile
   (etag [_])
   (exists? [_]))
@@ -19,22 +29,35 @@
       ;; otherwise, we presume the config file is read-only
       ;; (i.e. in a JAR file)
       url))
-  (exists? [url]
-    ;; any offers of a better implementation for this?
-    (try
-      (with-open [s (.openStream url)]
-        true)
-      (catch Exception e
-        false)))
+
+  ;; Most people will use (io/resource ...) to get the URL - which
+  ;; returns nil if the resource doesn't exist. So if they do manually
+  ;; specify a URL that doesn't exist, I'm happy with this throwing an
+  ;; exception in load-config rather than returning nil.
+  (exists? [url] true)
 
   nil
   (etag [_] nil)
   (exists? [_] false))
 
+(defn with-current-host-config [config]
+  (if-let [host-config (get-in config [:nomad/hosts (get-hostname)])]
+    (assoc config :nomad/current-host host-config)
+    config))
+
+(defn with-current-instance-config [config]
+  (if-let [instance-config (get-in config [:nomad/current-host
+                                             :nomad/instances
+                                             (get-instance)])]
+    (assoc config :nomad/current-instance instance-config)
+    config))
+
 (defn- load-config [config-file]
   (when (exists? config-file)
-    (with-meta (read-string (slurp config-file))
-      {:etag (etag config-file)})))
+    (-> (with-meta (read-string (slurp config-file))
+          {:etag (etag config-file)})
+        with-current-host-config
+        with-current-instance-config)))
 
 (defn get-config [config-ref config-file]
   (dosync
@@ -47,22 +70,6 @@
                 (if (not= file-etag (-> current-config meta :etag))
                   (load-config config-file)
                   current-config)))))))
-
-(def ^:private get-hostname
-  (memoize
-   (fn []
-     (.trim (:out (sh "hostname"))))))
-
-(defn get-host-config [config]
-  (get-in config [:nomad/hosts (get-hostname)]))
-
-(def ^:private get-instance
-  (memoize
-   (fn []
-     (get (System/getenv) "NOMAD_INSTANCE" :default))))
-
-(defn get-instance-config [config]
-  (get-in (get-host-config config) [:nomad/instances (get-instance)]))
 
 (defmacro defconfig [name file-or-resource]
   `(let [config-ref# (ref nil)]
