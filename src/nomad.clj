@@ -12,14 +12,16 @@
    (fn []
      (get (System/getenv) "NOMAD_INSTANCE" :default))))
 
-(defprotocol ^:private ConfigFile
+(defprotocol ConfigFile
   (etag [_])
-  (exists? [_]))
+  (exists? [_])
+  (slurp* [_]))
 
 (extend-protocol ConfigFile
   java.io.File
   (etag [f] (.lastModified f))
   (exists? [f] (.exists f))
+  (slurp* [f] (slurp f))
 
   java.net.URL
   (etag [url]
@@ -35,6 +37,7 @@
   ;; specify a URL that doesn't exist, I'm happy with this throwing an
   ;; exception in load-config rather than returning nil.
   (exists? [url] true)
+  (slurp* [url] (slurp url))
 
   nil
   (etag [_] nil)
@@ -54,7 +57,7 @@
 
 (defn- load-config [config-file]
   (when (exists? config-file)
-    (-> (with-meta (read-string (slurp config-file))
+    (-> (with-meta (read-string (slurp* config-file))
           {:etag (etag config-file)
            :config-file config-file})
         with-current-host-config
