@@ -72,10 +72,10 @@
                                                        :config-file dummy-config-file}))]
     (test/is (= new-config (select-keys returned-config [:a :b])))))
 
-(defrecord DummyPrivateFile [etag content]
+(defrecord DummyPrivateFile [etag* content*]
   nomad/ConfigFile
-  (etag [_] etag)
-  (slurp* [_] (pr-str content)))
+  (etag [_] etag*)
+  (slurp* [_] (pr-str content*)))
 
 (deftest loads-private-config
   (let [config {:nomad/hosts {"my-host"
@@ -96,3 +96,44 @@
                                                                 (pr-str config)))}))))]
     (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))
     (test/is (= :of-course (get-in returned-config [:nomad/private :nomad/current-instance :instance-private])))))
+
+(deftest reloads-private-config-when-private-file-changes
+  (let [config {:nomad/hosts {"my-host"
+                              {:nomad/private-file
+                               (DummyPrivateFile.
+                                "new-etag" {:host-private :yes-indeed})}}}
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           (with-meta {:nomad/private
+                                       (with-meta {:nomad/current-host
+                                                   {:host-private :definitely-not}}
+                                         {:old-etag "old-etag"
+                                          :config-file (DummyPrivateFile.
+                                                        "old-etag"
+                                                        {:host-private :yes-indeed})})}
+                             {:config-file (DummyConfigFile. (constantly "public-etag")
+                                                             (constantly
+                                                              (pr-str config)))
+                              :old-etag "public-etag"})))]
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))))
+
+(defrecord DummyUnchangingPrivateFile [etag*]
+  nomad/ConfigFile
+  (etag [_] etag*)
+  (slurp* [_] (throw (AssertionError. "Shouldn't reload!"))))
+
+(deftest caches-private-config-when-nothing-changes
+  (let [private-file (DummyUnchangingPrivateFile. "same-private-etag")
+        config {:nomad/hosts {"my-host" {:nomad/private-file private-file}}}
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           (with-meta {:nomad/private
+                                       {:nomad/current-host
+                                        (with-meta {:host-private :yes-indeed}
+                                          {:old-etag "same-private-etag"
+                                           :config-file private-file})}}
+                             {:config-file (DummyConfigFile. (constantly "same-public-etag")
+                                                             (constantly
+                                                              (pr-str config)))
+                              :old-etag "same-public-etag"})))]
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))))
