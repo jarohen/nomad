@@ -98,19 +98,17 @@
     (test/is (= :of-course (get-in returned-config [:nomad/private :nomad/current-instance :instance-private])))))
 
 (deftest reloads-private-config-when-private-file-changes
-  (let [config {:nomad/hosts {"my-host"
-                              {:nomad/private-file
-                               (DummyPrivateFile.
-                                "new-etag" {:host-private :yes-indeed})}}}
+  (let [new-private-file (DummyPrivateFile.
+                          "new-etag" {:host-private :yes-indeed})
+        config {:nomad/hosts {"my-host"
+                              {:nomad/private-file new-private-file}}}
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
                            (with-meta {:nomad/private
-                                       (with-meta {:nomad/current-host
-                                                   {:host-private :definitely-not}}
-                                         {:old-etag "old-etag"
-                                          :config-file (DummyPrivateFile.
-                                                        "old-etag"
-                                                        {:host-private :yes-indeed})})}
+                                       {:nomad/current-host
+                                        (with-meta {:host-private :definitely-not}
+                                          {:old-etag "old-etag"
+                                           :config-file new-private-file})}}
                              {:config-file (DummyConfigFile. (constantly "public-etag")
                                                              (constantly
                                                               (pr-str config)))
