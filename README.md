@@ -236,8 +236,15 @@ Thanks!
 
 ### 0.2.1
 
-Addition of private configuration through `:nomad/private-file` keys,
-and the `#nomad/file` reader macro - no breaking changes.
+Mainly the addition of the private configuration - no breaking changes.
+
+* Allowed users to add `:nomad/private-file` key to host/instance maps
+  to specify a private configuration file, which is merged into the
+  `:nomad/current-host` and `:nomad/current-instance` maps.
+* Added `#nomad/file` reader macro
+* Added `:nomad/hostname` and `:nomad/instance` keys to
+  `:nomad/current-host` and `:nomad/current-instance` maps
+  respectively.
 
 ### 0.2.0
 
