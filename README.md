@@ -41,7 +41,7 @@ however it will load any data structure in the file.
 To load the data structure in the file, use the `defconfig` macro,
 passing in either a file or a classpath resource:
 
-nomad-config.edn:
+my-config.edn:
 
 ```clojure
 {:my-key "my-value"}
