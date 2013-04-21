@@ -12,5 +12,5 @@
     (fn m [& maps]
       (if (every? map? maps)
         (apply merge-with m maps)
-        (first maps)))
+        (last maps)))
     maps))

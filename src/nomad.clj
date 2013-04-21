@@ -52,27 +52,31 @@
       (vary-meta (reload-config-file config-file) assoc :updated? true)
       (vary-meta current-config dissoc :updated?))))
 
-(defn- with-updated-private-config [specific-config]
-  (let [just-public-config (-> specific-config meta :public-config)
-        old-private-config (or (-> specific-config meta :private-config)
-                               (with-meta {}
-                                 {:config-file (get specific-config :nomad/private-file)}))
-        new-private-config (update-config-file old-private-config)]
-    (if (-> new-private-config meta :updated?)
-      (-> (deep-merge new-private-config just-public-config)
-          (vary-meta assoc :private-config new-private-config))
-      specific-config)))
+(defn- update-config-pair [current-config]
+  (let [{:keys [old-public old-private]} (meta current-config)
+        new-public (when old-public
+                     (update-config-file old-public))
+        new-private (or (when-let [new-private-file (-> new-public :nomad/private-file)]
+                          (update-config-file (vary-meta (or old-private {})
+                                                         assoc :config-file new-private-file)))
+                        {})]
+    (with-meta (if (or (-> new-public meta :updated?)
+                       (-> new-private meta :updated?))
+                 (deep-merge new-public new-private)
+                 current-config)
+      {:old-public new-public
+       :old-private new-private})))
 
 (defn- with-current-specific-config [config config-key refresh-specific-config]
   (update-in config
              [config-key]
              (fn [current-config]
-               (-> (or current-config
-                       (when-let [public-config (refresh-specific-config)]
-                         (with-meta public-config
-                           {:public-config public-config}))
-                       {})
-                   with-updated-private-config))))
+               (update-config-pair
+                (or current-config
+                    (when-let [public-config (refresh-specific-config)]
+                      (with-meta public-config
+                        {:old-public public-config}))
+                    {})))))
 
 (defn- with-current-host-config [config]
   (-> config
@@ -85,7 +89,7 @@
         #(get-in config [:nomad/current-host :nomad/instances (get-instance)]))))
 
 (defn- update-config [current-config]
-  (-> (update-config-file current-config)
+  (-> (update-config-pair current-config)
       with-current-host-config
       with-current-instance-config))
 
@@ -94,7 +98,7 @@
 
 (defmacro defconfig [name file-or-resource]
   `(let [config-ref# (ref (with-meta {}
-                            {:config-file ~file-or-resource
-                             :old-etag ::nil}))]
+                            {:old-public (with-meta {}
+                                           {:config-file ~file-or-resource})}))]
      (defn ~name []
        (#'get-current-config config-ref#))))
