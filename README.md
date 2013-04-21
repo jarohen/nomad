@@ -21,16 +21,16 @@ separate dependency!
 Add the **nomad** dependency to your `project.clj`
 
 ```clojure
-[jarohen/nomad "0.2.0"]
+[jarohen/nomad "0.2.1"]
 
 ;; legacy
 [jarohen/nomad "0.1.0"]
 
-;; Version 0.2.0 has introduced a couple of breaking changes
-;; since version 0.1.0 - please see 'Changes', below.
+;; Version 0.2.0 and above introduced a couple 
+;; of breaking changes since version 0.1.0 - 
+;; please see 'Changes', below.
 
 ```
-
 
 Nomad expects your configuration to be stored in an [EDN][1]
 file. Nomad does expect a particular structure for your configuration,
@@ -167,17 +167,21 @@ my-config.edn:
 {:nomad/hosts
 	{"my-host"
 		;; Using the '#nomad/file' reader macro
-		{:nomad/private-file #nomad/file "/home/me/.my-app/secret-config.edn"}
+		{:nomad/private-file #nomad/file "/home/me/.my-app/secret-config.edn"
+		{:database {:username "my-user"
+		            :password :will-be-overridden}}}}}
 ```
 
 /home/me/.my-app/secret-config.edn
+(outside of source code)
 
 ```clojure
-{:my-top-secret-password "password123"}
+{:database {:password "password123"}}
+;; because all the best passwords are... ;)
 ```
 
-You can then access the host- and instance- private configuration
-using the `:nomad/private` key:
+The private configuration is recursively merged into the public host
+configuration, as follows:
 
 my_ns.clj:
 
@@ -188,14 +192,9 @@ my_ns.clj:
 
 (defconfig my-config (io/resource "config/my-config.edn"))
 
-(get-in (my-config) [:nomad/private :nomad/current-host :my-top-secret-password])
-;; -> "password123"
+(get-in (my-config) [:nomad/current-host :database])
+;; -> {:username "my-user", :password "password123"}
 ```
-
-(This reader macro only applies for the configuration file, and will
-not impact the rest of your application. Having said this, Nomad is
-open-source - so please feel free to pinch the two lines of code that
-it took to implement this!)
 
 ## Configuration structure - Summary
 
@@ -203,17 +202,20 @@ The structure of the resulting configuration map is as follows:
 
 * `:nomad/hosts` - the configuration for all of the hosts
     * `"hostname"`
-        * `:nomad/instances` - the configuration for all of the instances on this host
+        * `:nomad/instances` - the configuration for all of the
+          instances on this host
             * `"instance-name" { ... }`
             * `"another-instance" { ... }`
         * `...` - other host-related configuration
     * `"other-host" { ... }`
-* `:nomad/current-host { ... }` - added by Nomad at run-time: the configuration of the current host (copied from the host map, above)
-* `:nomad/current-instance { ... }` - added by Nomad at run-time: the configuration of the current instance (copied from the instance map)
-* `:nomad/private` - added by Nomad at run-time: the private configuration
-    * `:nomad/current-host { ... }` - any configuration in the current host's private file
-    * `:nomad/current-instance { ... }` - any configuration in the current instance's private file
-* `...` - any other configuration.
+* `:nomad/current-host { ... }` - added by Nomad at run-time: the
+  configuration of the current host (copied from the host map, above),
+  merged with any code from the current host's private configuration
+  file.
+* `:nomad/current-instance { ... }` - added by Nomad at run-time: the
+  configuration of the current instance (copied from the instance
+  map), merged with any code from the current instance's private
+  configuration file.
 
 
 ## Bugs/features/suggestions/questions?
