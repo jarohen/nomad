@@ -1,6 +1,7 @@
 (ns nomad
   (:require [clojure.java.io :as io]
-            [clojure.java.shell :refer [sh]]))
+            [clojure.java.shell :refer [sh]]
+            [nomad.map :refer [deep-merge]]))
 
 (def ^:private get-hostname
   (memoize
@@ -48,41 +49,45 @@
   (let [{:keys [old-etag config-file]} (meta current-config)
         new-etag (etag config-file)]
     (if (not= old-etag new-etag)
-      (reload-config-file config-file)
-      current-config)))
+      (vary-meta (reload-config-file config-file) assoc :updated? true)
+      (vary-meta current-config dissoc :updated?))))
+
+(defn- with-updated-private-config [specific-config]
+  (let [just-public-config (-> specific-config meta :public-config)
+        old-private-config (or (-> specific-config meta :private-config)
+                               (with-meta {}
+                                 {:config-file (get specific-config :nomad/private-file)}))
+        new-private-config (update-config-file old-private-config)]
+    (if (-> new-private-config meta :updated?)
+      (-> (deep-merge new-private-config just-public-config)
+          (vary-meta assoc :private-config new-private-config))
+      specific-config)))
+
+(defn- with-current-specific-config [config config-key refresh-specific-config]
+  (update-in config
+             [config-key]
+             (fn [current-config]
+               (-> (or current-config
+                       (when-let [public-config (refresh-specific-config)]
+                         (with-meta public-config
+                           {:public-config public-config}))
+                       {})
+                   with-updated-private-config))))
 
 (defn- with-current-host-config [config]
-  (assoc config
-    :nomad/current-host (or (get-in config [:nomad/hosts (get-hostname)])
-                            {})))
+  (-> config
+      (with-current-specific-config :nomad/current-host
+        #(get-in config [:nomad/hosts (get-hostname)]))))
 
 (defn- with-current-instance-config [config]
-  (assoc config
-    :nomad/current-instance (or (get-in config [:nomad/current-host
-                                                :nomad/instances
-                                                (get-instance)])
-                                {})))
-
-(defn- with-updated-private-config [config]
-  (update-in
-   config [:nomad/private]
-
-   (fn [private-config]
-     (letfn [(update-private-config [k]
-               (update-config-file
-                (or (get private-config k)
-                    (with-meta {}
-                      {:old-etag ::nil
-                       :config-file (get-in config [k :nomad/private-file])}))))]
-                 
-       {:nomad/current-host (update-private-config :nomad/current-host)
-        :nomad/current-instance (update-private-config :nomad/current-instance)}))))
+  (-> config
+      (with-current-specific-config :nomad/current-instance
+        #(get-in config [:nomad/current-host :nomad/instances (get-instance)]))))
 
 (defn- update-config [current-config]
   (-> (update-config-file current-config)
       with-current-host-config
-      with-current-instance-config
-      with-updated-private-config))
+      with-current-instance-config))
 
 (defn- get-current-config [config-ref]
   (dosync (alter config-ref update-config)))
