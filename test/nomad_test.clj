@@ -94,8 +94,24 @@
                                {:config-file (DummyConfigFile. (constantly ::etag)
                                                                (constantly
                                                                 (pr-str config)))}))))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))
-    (test/is (= :of-course (get-in returned-config [:nomad/private :nomad/current-instance :instance-private])))))
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))
+    (test/is (= :of-course (get-in returned-config [:nomad/current-instance :instance-private])))))
+
+(deftest deep-merges-private-config
+  (let [config {:nomad/hosts {"my-host"
+                              {:database {:username "my-user"
+                                          :password "failed..."}
+                               :nomad/private-file
+                               (DummyPrivateFile.
+                                ::etag {:database {:password "password123"}})}}}
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           (with-meta {}
+                             {:config-file (DummyConfigFile. (constantly ::etag)
+                                                             (constantly
+                                                              (pr-str config)))})))]
+    (test/is (= "my-user" (get-in returned-config [:nomad/current-host :database :username]))) 
+    (test/is (= "password123" (get-in returned-config [:nomad/current-host :database :password])))))
 
 (deftest reloads-private-config-when-private-file-changes
   (let [new-private-file (DummyPrivateFile.
@@ -113,7 +129,7 @@
                                                              (constantly
                                                               (pr-str config)))
                               :old-etag "public-etag"})))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))))
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))))
 
 (defrecord DummyUnchangingPrivateFile [etag*]
   nomad/ConfigFile
@@ -134,4 +150,4 @@
                                                              (constantly
                                                               (pr-str config)))
                               :old-etag "same-public-etag"})))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/private :nomad/current-host :host-private])))))
+    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))))
