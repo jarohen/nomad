@@ -79,14 +79,18 @@
                     {})))))
 
 (defn- with-current-host-config [config]
-  (-> config
-      (with-current-specific-config :nomad/current-host
-        #(get-in config [:nomad/hosts (get-hostname)]))))
+  (let [hostname (get-hostname)]
+    (-> config
+        (with-current-specific-config :nomad/current-host
+          #(get-in config [:nomad/hosts hostname]))
+        (assoc-in [:nomad/current-host :nomad/hostname] hostname))))
 
 (defn- with-current-instance-config [config]
-  (-> config
-      (with-current-specific-config :nomad/current-instance
-        #(get-in config [:nomad/current-host :nomad/instances (get-instance)]))))
+  (let [instance (get-instance)]
+    (-> config
+        (with-current-specific-config :nomad/current-instance
+          #(get-in config [:nomad/current-host :nomad/instances instance]))
+        (assoc-in [:nomad/current-instance :nomad/instance] instance))))
 
 (defn- update-config [current-config]
   (-> (update-config-pair current-config)

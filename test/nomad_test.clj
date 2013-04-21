@@ -141,6 +141,26 @@
                                             :old-etag "same-private-etag"})}))]
     (test/is (= :yes-indeed (get-in returned-config [:host-private])))))
 
+(deftest adds-hostname-key-to-current-host-map
+  (let [returned-config (with-hostname "dummy-hostname"
+                          (#'nomad/update-config
+                           (with-meta {}
+                             {:old-public (with-meta {}
+                                            {:config-file (DummyConfigFile.
+                                                           (constantly ::etag)
+                                                           (constantly (pr-str {})))})})))]
+    (test/is (= "dummy-hostname" (get-in returned-config [:nomad/current-host :nomad/hostname])))))
+
+(deftest adds-instance-key-to-current-instance-map
+  (let [returned-config (with-instance "dummy-instance"
+                          (#'nomad/update-config
+                           (with-meta {}
+                             {:old-public (with-meta {}
+                                            {:config-file (DummyConfigFile.
+                                                           (constantly ::etag)
+                                                           (constantly (pr-str {})))})})))]
+    (test/is (= "dummy-instance" (get-in returned-config [:nomad/current-instance :nomad/instance])))))
+
 (comment
   ;; This bit is for some manual integration testing
 

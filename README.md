@@ -86,6 +86,9 @@ Nomad will then put the configuration of the current host on the
 ;; On "my-web-server", will return "prod-value"
 ```
 
+Nomad also adds the `:nomad/hostname` key to the `:nomad/current-host`
+map, with the hostname of the current machine.
+
 ### 'Instances'
 
 Nomad also allows you to set up different 'instances' running on the
@@ -117,6 +120,10 @@ configuration for the current instance:
 
 ;; will slurp "/home/me/.dev2/data-file.edn
 ```
+
+Similarly to the current host map, Nomad adds a `:nomad/instance` key
+to the `:nomad/current-instance` map, with the name of the current
+instance.
 
 ### Referring to file paths
 
