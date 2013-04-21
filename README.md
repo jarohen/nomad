@@ -196,6 +196,26 @@ my_ns.clj:
 not impact the rest of your application. Having said this, Nomad is
 open-source - so please feel free to pinch the two lines of code that
 it took to implement this!)
+
+## Configuration structure - Summary
+
+The structure of the resulting configuration map is as follows:
+
+* `:nomad/hosts` - the configuration for all of the hosts
+    * `"hostname"`
+        * `:nomad/instances` - the configuration for all of the instances on this host
+            * `"instance-name" { ... }`
+            * `"another-instance" { ... }`
+        * `...` - other host-related configuration
+    * `"other-host" { ... }`
+* `:nomad/current-host { ... }` - added by Nomad at run-time: the configuration of the current host (copied from the host map, above)
+* `:nomad/current-instance { ... }` - added by Nomad at run-time: the configuration of the current instance (copied from the instance map)
+* `:nomad/private` - added by Nomad at run-time: the private configuration
+    * `:nomad/current-host { ... }` - any configuration in the current host's private file
+    * `:nomad/current-instance { ... }` - any configuration in the current instance's private file
+* `...` - any other configuration.
+
+
 ## Bugs/features/suggestions/questions?
 
 Please feel free to submit bug reports/patches etc through the GitHub
