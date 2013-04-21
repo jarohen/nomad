@@ -19,9 +19,10 @@
   (let [config {:my-key :my-val}
         {:keys [my-key]} (#'nomad/update-config
                           (with-meta {}
-                            {:config-file (DummyConfigFile. (constantly ::etag)
-                                                            (constantly
-                                                             (pr-str config)))}))]
+                            {:old-public (with-meta {}
+                                           {:config-file (DummyConfigFile. (constantly ::etag)
+                                                                           (constantly
+                                                                            (pr-str config)))})}))]
     (test/is (= :my-val my-key))))
 
 (deftest host-config
@@ -30,9 +31,10 @@
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
                            (with-meta {}
-                             {:config-file (DummyConfigFile. (constantly ::etag)
-                                                             (constantly
-                                                              (pr-str config)))})))]
+                             {:old-public (with-meta {}
+                                            {:config-file (DummyConfigFile. (constantly ::etag)
+                                                                            (constantly
+                                                                             (pr-str config)))})})))]
     (test/is (= 1 (get-in returned-config [:nomad/current-host :a])))))
 
 (deftest instance-config
@@ -45,9 +47,10 @@
                           (with-instance "DEV2"
                             (#'nomad/update-config
                              (with-meta {}
-                               {:config-file (DummyConfigFile. (constantly ::etag)
-                                                               (constantly
-                                                                (pr-str config)))}))))]
+                               {:old-public (with-meta {}
+                                              {:config-file (DummyConfigFile. (constantly ::etag)
+                                                                              (constantly
+                                                                               (pr-str config)))})}))))]
     (test/is (= 2 (get-in returned-config [:nomad/current-instance :a])))))
 
 (deftest caches-when-not-changed
@@ -58,8 +61,8 @@
                                                      "Shouldn't reload!")))
         returned-config (#'nomad/update-config
                          (with-meta config
-                           {:old-etag constant-etag
-                            :config-file dummy-config-file}))]
+                           {:old-public {:config-file dummy-config-file
+                                         :old-etag constant-etag}}))]
     (test/is (= config (select-keys returned-config [:a :b])))))
 
 (deftest reloads-when-changed
@@ -68,8 +71,9 @@
         dummy-config-file (DummyConfigFile. (constantly "new-etag")
                                             (constantly (pr-str new-config)))
         returned-config (#'nomad/update-config (with-meta old-config
-                                                      {:old-etag "old-etag"
-                                                       :config-file dummy-config-file}))]
+                                                 {:old-public (with-meta old-config
+                                                                {:old-etag "old-etag"
+                                                                 :config-file dummy-config-file})}))]
     (test/is (= new-config (select-keys returned-config [:a :b])))))
 
 (defrecord DummyPrivateFile [etag* content*]
@@ -78,59 +82,46 @@
   (slurp* [_] (pr-str content*)))
 
 (deftest loads-private-config
-  (let [config {:nomad/hosts {"my-host"
-                              {:nomad/private-file
-                               (DummyPrivateFile.
-                                ::etag {:host-private :yes-indeed})
-                               :nomad/instances
-                               {"instance" {:a 1
-                                            :nomad/private-file
-                                            (DummyPrivateFile.
-                                             ::etag {:instance-private :of-course})}}}}}
-        returned-config (with-hostname "my-host"
-                          (with-instance "instance"
-                            (#'nomad/update-config
-                             (with-meta {}
-                               {:config-file (DummyConfigFile. (constantly ::etag)
-                                                               (constantly
-                                                                (pr-str config)))}))))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))
-    (test/is (= :of-course (get-in returned-config [:nomad/current-instance :instance-private])))))
+  (let [config {:nomad/private-file
+                (DummyPrivateFile.
+                 ::etag {:something-private :yes-indeed})}
+        returned-config (#'nomad/update-config-pair
+                         (with-meta config
+                           {:old-public
+                            (with-meta config
+                              {:config-file (DummyConfigFile. (constantly ::etag)
+                                                              (constantly
+                                                               (pr-str config)))})}))]
+    (test/is (= :yes-indeed (get-in returned-config [:something-private])))))
 
 (deftest deep-merges-private-config
-  (let [config {:nomad/hosts {"my-host"
-                              {:database {:username "my-user"
-                                          :password "failed..."}
-                               :nomad/private-file
-                               (DummyPrivateFile.
-                                ::etag {:database {:password "password123"}})}}}
-        returned-config (with-hostname "my-host"
-                          (#'nomad/update-config
-                           (with-meta {}
-                             {:config-file (DummyConfigFile. (constantly ::etag)
-                                                             (constantly
-                                                              (pr-str config)))})))]
-    (test/is (= "my-user" (get-in returned-config [:nomad/current-host :database :username]))) 
-    (test/is (= "password123" (get-in returned-config [:nomad/current-host :database :password])))))
+  (let [config {:database {:username "my-user"
+                           :password "failed..."}
+                :nomad/private-file
+                (DummyPrivateFile.
+                 ::etag {:database {:password "password123"}})}
+        returned-config (#'nomad/update-config-pair
+                         (with-meta config
+                           {:old-public (with-meta config
+                                          {:config-file (DummyConfigFile. (constantly ::etag)
+                                                                          (constantly
+                                                                           (pr-str config)))})}))]
+    (test/is (= "my-user" (get-in returned-config [:database :username]))) 
+    (test/is (= "password123" (get-in returned-config [:database :password])))))
 
 (deftest reloads-private-config-when-private-file-changes
   (let [new-private-file (DummyPrivateFile.
                           "new-etag" {:host-private :yes-indeed})
-        config {:nomad/hosts {"my-host"
-                              {:nomad/private-file new-private-file}}}
-        returned-config (with-hostname "my-host"
-                          (#'nomad/update-config
-                           (with-meta {:nomad/current-host
-                                       (with-meta {:host-private :definitely-not}
-                                         {:public-config {:host-private :definitely-not}
-                                          :private-config (with-meta {}
-                                                            {:config-file new-private-file
-                                                             :old-etag "old-etag"})})}
-                             {:config-file (DummyConfigFile. (constantly "public-etag")
-                                                             (constantly
-                                                              (pr-str config)))
-                              :old-etag "public-etag"})))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))))
+        new-config {:nomad/private-file new-private-file}
+        returned-config (#'nomad/update-config-pair
+                         (with-meta {:nomad/private-file new-private-file
+                                     :host-private :definitely-not}
+                           {:old-public {:nomad/private-file new-private-file}
+                            :old-private (with-meta {:host-private :definitely-not}
+                                           {:config-file new-private-file
+                                            :old-etag "old-etag"})}))]
+    
+    (test/is (= :yes-indeed (get-in returned-config [:host-private])))))
 
 (defrecord DummyUnchangingPrivateFile [etag*]
   nomad/ConfigFile
@@ -139,17 +130,13 @@
 
 (deftest caches-private-config-when-nothing-changes
   (let [private-file (DummyUnchangingPrivateFile. "same-private-etag")
-        config {:nomad/hosts {"my-host" {:nomad/private-file private-file}}}
-        returned-config (with-hostname "my-host"
-                          (#'nomad/update-config
-                           (with-meta {:nomad/current-host
-                                       (with-meta {:host-private :yes-indeed}
-                                         {:public-config {}
-                                          :private-config (with-meta {:host-private :yes-indeed}
-                                                            {:config-file private-file
-                                                             :old-etag "same-private-etag"})})}
-                             {:config-file (DummyConfigFile. (constantly "same-public-etag")
-                                                             (constantly
-                                                              (pr-str config)))
-                              :old-etag "same-public-etag"})))]
-    (test/is (= :yes-indeed (get-in returned-config [:nomad/current-host :host-private])))))
+        config {:nomad/private-file private-file}
+        returned-config (#'nomad/update-config-pair
+                         (with-meta {:nomad/private-file private-file
+                                     :host-private :yes-indeed}
+                           {:old-public {:nomad/private-file private-file}
+                            :old-private (with-meta {:host-private :yes-indeed}
+                                           {:config-file private-file
+                                            :old-etag "same-private-etag"})}))]
+    (test/is (= :yes-indeed (get-in returned-config [:host-private])))))
+
