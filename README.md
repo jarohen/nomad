@@ -149,6 +149,53 @@ not impact the rest of your application. Having said this, Nomad is
 open-source - so please feel free to pinch the two lines of code that
 it took to implement this!)
 
+
+## Private configuration
+
+Some configuration probably shouldn't belong in source code control -
+i.e. passwords, credentials, production secrets etc. Nomad allows you
+to define 'private configuration files' - a reference to either host-
+or instance-specific files outside of your classpath to include in the
+configuration map.
+
+To do this, include a `:nomad/private-file` key in either your host or
+instance config, pointing to a file on the local file system:
+
+my-config.edn:
+
+```clojure
+{:nomad/hosts
+	{"my-host"
+		;; Using the '#nomad/file' reader macro
+		{:nomad/private-file #nomad/file "/home/me/.my-app/secret-config.edn"}
+```
+
+/home/me/.my-app/secret-config.edn
+
+```clojure
+{:my-top-secret-password "password123"}
+```
+
+You can then access the host- and instance- private configuration
+using the `:nomad/private` key:
+
+my_ns.clj:
+
+```clojure
+(ns my-ns
+    (:require [nomad :refer [defconfig]
+              [clojure.java.io :as io]]))
+
+(defconfig my-config (io/resource "config/my-config.edn"))
+
+(get-in (my-config) [:nomad/private :nomad/current-host :my-top-secret-password])
+;; -> "password123"
+```
+
+(This reader macro only applies for the configuration file, and will
+not impact the rest of your application. Having said this, Nomad is
+open-source - so please feel free to pinch the two lines of code that
+it took to implement this!)
 ## Bugs/features/suggestions/questions?
 
 Please feel free to submit bug reports/patches etc through the GitHub
