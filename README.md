@@ -243,6 +243,10 @@ and the `#nomad/file` reader macro - no breaking changes.
   `nomad-config.edn` file at the root of the classpath. You can now
   specify the file or resource (or many, in fact, if you use several
   `defconfig` invocations) for Nomad to use.
+  
+### 0.1.0
+
+Initial release
 
 ## License
 
