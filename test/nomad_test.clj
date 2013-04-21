@@ -120,11 +120,12 @@
                               {:nomad/private-file new-private-file}}}
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
-                           (with-meta {:nomad/private
-                                       {:nomad/current-host
-                                        (with-meta {:host-private :definitely-not}
-                                          {:old-etag "old-etag"
-                                           :config-file new-private-file})}}
+                           (with-meta {:nomad/current-host
+                                       (with-meta {:host-private :definitely-not}
+                                         {:public-config {:host-private :definitely-not}
+                                          :private-config (with-meta {}
+                                                            {:config-file new-private-file
+                                                             :old-etag "old-etag"})})}
                              {:config-file (DummyConfigFile. (constantly "public-etag")
                                                              (constantly
                                                               (pr-str config)))
@@ -141,11 +142,12 @@
         config {:nomad/hosts {"my-host" {:nomad/private-file private-file}}}
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
-                           (with-meta {:nomad/private
-                                       {:nomad/current-host
-                                        (with-meta {:host-private :yes-indeed}
-                                          {:old-etag "same-private-etag"
-                                           :config-file private-file})}}
+                           (with-meta {:nomad/current-host
+                                       (with-meta {:host-private :yes-indeed}
+                                         {:public-config {}
+                                          :private-config (with-meta {:host-private :yes-indeed}
+                                                            {:config-file private-file
+                                                             :old-etag "same-private-etag"})})}
                              {:config-file (DummyConfigFile. (constantly "same-public-etag")
                                                              (constantly
                                                               (pr-str config)))
