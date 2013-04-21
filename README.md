@@ -118,6 +118,37 @@ configuration for the current instance:
 ;; will slurp "/home/me/.dev2/data-file.edn
 ```
 
+### Referring to file paths
+
+You can use the ```#nomad/file``` reader macro to declare files in
+your configuration, in addition to the usual Clojure reader macros. 
+
+my-config.edn:
+
+```clojure
+{:nomad/hosts
+	{"my-host"
+		{:data-directory #nomad/file "/home/james/.my-app"}}}
+```
+
+my_ns.clj:
+
+```clojure
+(ns my-ns
+    (:require [nomad :refer [defconfig]
+              [clojure.java.io :as io]]))
+
+(defconfig my-config (io/resource "config/my-config.edn"))
+
+(type (get-in (my-config) [:nomad/current-host :data-directory]))
+;; -> java.io.File
+```
+
+(This reader macro only applies for the configuration file, and will
+not impact the rest of your application. Having said this, Nomad is
+open-source - so please feel free to pinch the two lines of code that
+it took to implement this!)
+
 ## Bugs/features/suggestions/questions?
 
 Please feel free to submit bug reports/patches etc through the GitHub
