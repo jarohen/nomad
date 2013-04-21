@@ -205,6 +205,11 @@ Thanks!
 
 ## Changes
 
+### 0.2.1
+
+Addition of private configuration through `:nomad/private-file` keys,
+and the `#nomad/file` reader macro - no breaking changes.
+
 ### 0.2.0
 
 0.2.0 has introduced a couple of breaking changes:
