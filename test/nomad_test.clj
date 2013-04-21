@@ -1,6 +1,7 @@
 (ns nomad-test
   (:require [nomad :refer [defconfig]]
-            [clojure.test :as test :refer [deftest]]))
+            [clojure.test :as test :refer [deftest]]
+            [clojure.java.io :as io]))
 
 (defmacro with-hostname [hostname & body]
   `(with-redefs [nomad/get-hostname (constantly ~hostname)]
@@ -140,3 +141,11 @@
                                             :old-etag "same-private-etag"})}))]
     (test/is (= :yes-indeed (get-in returned-config [:host-private])))))
 
+(comment
+  ;; This bit is for some manual integration testing
+
+  (defconfig test-config (io/resource "test-config.edn"))
+
+  (with-hostname "my-host"
+    (with-instance "test-instance"
+      (:nomad/current-instance (test-config)))))

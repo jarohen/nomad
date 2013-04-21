@@ -1,0 +1,12 @@
+{:config-key :value2
+ :nomad/hosts {"my-other-host"
+               {:host-config :other-host-value}
+
+               "my-host"
+               {:host-config :my-host-value
+                :nomad/private-file #nomad/file "test/private.edn"
+                :nomad/instances {"test-instance"
+                                  {:nomad/private-file #nomad/file "test/private-instance.edn"
+                                   :instance-key :instance-val
+                                   :database {:username "my-user"
+                                              :password :secret}}}}}}
