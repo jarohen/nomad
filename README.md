@@ -230,8 +230,8 @@ return your configuration map, but with the snippet dereferenced:
 (my-config)
 ;; on "my-host"
 ;; -> {:database {:host "dev-host"
-                  :user "dev-user"}
-       ... }
+;;                :user "dev-user"}
+;;     ... }
 ```
 
 
