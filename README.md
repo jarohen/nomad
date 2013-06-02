@@ -21,14 +21,21 @@ separate dependency!
 Add the **nomad** dependency to your `project.clj`
 
 ```clojure
+;; stable
+[jarohen/nomad "0.3.0"]
+
+;; bug-fixes only
 [jarohen/nomad "0.2.1"]
 
-;; legacy
-[jarohen/nomad "0.1.0"]
+;; Version 0.3.x introduces a large breaking change to 0.2.x,
+;; namely that current host/instance config is now all merged into one
+;; consolidated map. Please do not just update your project.clj version
+;; without testing!
 
-;; Version 0.2.0 and above introduced a couple 
-;; of breaking changes since version 0.1.0 - 
-;; please see 'Changes', below.
+;; Version 0.2.x will now be maintained with bug-fixes, but no new features
+;; will be backported.
+
+;; Please see 'Changes', below.
 
 ```
 
@@ -76,18 +83,21 @@ hostname, as follows:
                "my-web-server" {:key1 "prod-value"}}}
 ```
 
-Nomad will then put the configuration of the current host on the
-`:nomad/current-host` key in the map:
+Nomad will then merge the configuration of the current host into the
+returned map:
 
 ```clojure
 
-(get-in (my-config) [:nomad/current-host :key1])
+(get-in (my-config) [:key1])
 ;; On "my-laptop", will return "dev-value"
 ;; On "my-web-server", will return "prod-value"
+
+;; Previously (0.2.x), you would have to have done:
+;; (get-in (my-config) [:nomad/current-host :key1])
 ```
 
-Nomad also adds the `:nomad/hostname` key to the `:nomad/current-host`
-map, with the hostname of the current machine.
+Nomad also adds the `:nomad/hostname` key to the map, with the
+hostname of the current machine.
 
 ### 'Instances'
 
@@ -111,19 +121,18 @@ environment variable before running your application:
 
     NOMAD_INSTANCE="DEV2" lein ring server
 
-Then, lookup the `:nomad/current-instance` key to get the
-configuration for the current instance:
+Then, the current instance configuration will also be merged into the
+map:
 
 ```clojure
-(let [{:keys [data-directory]} (:nomad/current-instance (my-config))]
+(let [{:keys [data-directory]} (my-config)]
 	(slurp (io/file data-directory "data-file.edn")))
 
 ;; will slurp "/home/me/.dev2/data-file.edn
 ```
 
-Similarly to the current host map, Nomad adds a `:nomad/instance` key
-to the `:nomad/current-instance` map, with the name of the current
-instance.
+Similarly to the current host, Nomad adds a `:nomad/instance` key to
+the map, with the name of the current instance.
 
 ### Referring to file paths
 
@@ -147,7 +156,7 @@ my_ns.clj:
 
 (defconfig my-config (io/resource "config/my-config.edn"))
 
-(type (get-in (my-config) [:nomad/current-host :data-directory]))
+(type (:data-directory (my-config)))
 ;; -> java.io.File
 ```
 
@@ -199,11 +208,47 @@ my_ns.clj:
 
 (defconfig my-config (io/resource "config/my-config.edn"))
 
-(get-in (my-config) [:nomad/current-host :database])
+(get-in (my-config) [:database])
 ;; -> {:username "my-user", :password "password123"}
 ```
 
-## Configuration structure - Summary
+## Order of preference
+
+Nomad now merges all of your public/private/host/instance
+configuration into one big map, with the following priorities (top
+being the highest priority):
+
+* Private instance config
+* Public instance config
+* Private host config
+* Public host config
+* Other config outside of `:nomad/hosts`
+
+### Where does that config value come from?!?!
+
+Nomad stores the individual components of the configuration as
+meta-information on the returned config:
+
+```clojure
+(ns my-ns
+    (:require [nomad :refer [defconfig]
+              [clojure.java.io :as io]]))
+
+(defconfig my-config (io/resource "config/my-config.edn"))
+
+(meta (my-config))
+;; -> {:general {:config ...}
+;;     :host {:config ...}
+;;     :host-private {:config ...}
+;;     :instance {:config ...}
+;;     :instance-private {:config ...}}
+```
+
+
+## Configuration structure - Summary (legacy)
+
+**(this only applies to the legacy 0.2.x branch, included for
+  posterity. In 0.3.x and later, this is all merged into one map)**
 
 The structure of the resulting configuration map is as follows:
 
@@ -233,6 +278,25 @@ repository in the usual way!
 Thanks!
 
 ## Changes
+
+### 0.3.0
+
+0.3.0 introduces a rather large breaking change: in the outputted
+configuration map, rather than lots of :nomad/* keys, all of the
+current host/current instance maps are merged into the main output map.
+
+In general, you should just be able to replace:
+
+* `(get-in (my-config) [:nomad/current-host :x :y])` with `(get-in
+  (my-config) [:x :y])`
+  
+and
+
+* `(get-in (my-config) [:nomad/current-instance :x :y])` with `(get-in
+  (my-config) [:x :y])`
+  
+unless you have conflicting key names in your general configuration.
+
 
 ### 0.2.1
 
