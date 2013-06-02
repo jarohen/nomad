@@ -38,7 +38,7 @@
   (etag [_] nil)
   (slurp* [_] (pr-str {})))
 
-(defn nomad-data-readers [snippet-reader]
+(defn- nomad-data-readers [snippet-reader]
   (assoc *data-readers*
     'nomad/file io/file
     'nomad/snippet snippet-reader))
@@ -64,7 +64,7 @@
       (reload-config-file config-file)
       current-config)))
 
-(defn update-specific-config [current-config downstream-key upstream-key selector value]
+(defn- update-specific-config [current-config downstream-key upstream-key selector value]
   (let [{new-etag :etag
          new-upstream-config :config} (get current-config upstream-key)
          
@@ -78,12 +78,12 @@
                         :etag new-etag
                         :config (get-in new-upstream-config [selector value])}))))
 
-(defn add-environment [configs]
+(defn- add-environment [configs]
   (assoc configs
     :environment {:nomad/hostname (get-hostname)
                   :nomad/instance (get-instance)}))
 
-(defn update-private-config [configs src-key dest-key]
+(defn- update-private-config [configs src-key dest-key]
   (let [{old-public-etag :public-etag
          old-etag :etag
          :as current-config} (get configs dest-key)
