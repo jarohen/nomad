@@ -198,9 +198,9 @@ of your configuration map:
 {:nomad/snippets
 	{:databases
 	    {:dev {:host "dev-host"
-		       :user "dev-user}}
+		       :user "dev-user"}}
 		 :prod {:host "prod-host"
-		        :user "prod-user}}}
+		        :user "prod-user"}}}
 ```
 
 You can then refer to them using the `#nomad/snippet` reader macro,
