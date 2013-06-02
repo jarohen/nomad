@@ -98,12 +98,12 @@
                  (update-config-file current-config private-file)))))
 
 (defn- merge-configs [configs]
-  (-> (deep-merge (get-in configs [:general :config] {})
-                  (get-in configs [:host :config] {})
-                  (get-in configs [:host-private :config] {})
-                  (get-in configs [:instance :config] {})
-                  (get-in configs [:instance-private :config] {})
-                  (get-in configs [:environment] {}))
+  (-> (deep-merge (or (get-in configs [:general :config]) {})
+                  (or (get-in configs [:host :config]) {})
+                  (or (get-in configs [:host-private :config]) {})
+                  (or (get-in configs [:instance :config]) {})
+                  (or (get-in configs [:instance-private :config]) {})
+                  (or (get-in configs [:environment]) {}))
       (dissoc :nomad/hosts :nomad/instances :nomad/private-file)
       (with-meta configs)))
 
