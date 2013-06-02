@@ -284,8 +284,8 @@ my_ns.clj:
 ## Order of preference
 
 Nomad now merges all of your public/private/host/instance
-configuration into one big map, with the following priorities (top
-being the highest priority):
+configuration into one big map, with the following priorities (in
+decreasing order of preference):
 
 * Private instance config
 * Public instance config
