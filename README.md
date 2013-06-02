@@ -26,18 +26,19 @@ Add the **nomad** dependency to your `project.clj`
 
 ;; bug-fixes only
 [jarohen/nomad "0.2.1"]
-
-;; Version 0.3.x introduces a large breaking change to 0.2.x,
-;; namely that current host/instance config is now all merged into one
-;; consolidated map. Please do not just update your project.clj version
-;; without testing!
-
-;; Version 0.2.x will now be maintained with bug-fixes, but no new features
-;; will be backported.
-
-;; Please see 'Changes', below.
-
 ```
+
+Version 0.3.x introduces a large breaking change to 0.2.x, namely that
+current host/instance config is now all merged into one consolidated
+map. Please do not just update your project.clj version without
+testing!
+
+Version 0.2.x will now be maintained with bug-fixes, but no new
+features will be backported.
+
+Please see 'Changes', below.
+
+### 'Hello world'
 
 Nomad expects your configuration to be stored in an [EDN][1]
 file. Nomad does expect a particular structure for your configuration,
