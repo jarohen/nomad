@@ -22,7 +22,7 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.3.0"]
+[jarohen/nomad "0.3.1"]
 
 ;; bug-fixes only
 [jarohen/nomad "0.2.1"]
@@ -165,6 +165,74 @@ my_ns.clj:
 not impact the rest of your application. Having said this, Nomad is
 open-source - so please feel free to pinch the two lines of code that
 it took to implement this!)
+
+### 'Snippets'
+
+Snippets (introduces in v0.3.1) allow you to refer to shared snippets
+of configuration from within your individual host/instance maps.
+
+#### Why snippets?
+
+I've found, both through my usage of Nomad and through feedback from
+others, that a lot of host-specific config is duplicated between
+similar hosts. 
+
+One example that comes up time and time again is database
+configuration - while it does differ from host to host, most hosts
+select from one of only a small number of distinct configurations
+(i.e. dev databases vs staging vs prod). Previously, this would mean
+either duplicating each database's configuration in each of the hosts
+that used it, or implementing a level of indirection in each project
+that uses Nomad.
+
+The introduction of 'snippets' means that each distinct database
+configuration only needs to be declared once, and each host simply
+contains a pointer to the relevant snippet.
+
+#### Using snippets
+
+Snippets are declared under the `:nomad/snippets` key at the top level
+of your configuration map:
+
+```clojure
+{:nomad/snippets
+	{:databases
+	    {:dev {:host "dev-host"
+		       :user "dev-user}}
+		 :prod {:host "prod-host"
+		        :user "prod-user}}}
+```
+
+You can then refer to them using the `#nomad/snippet` reader macro,
+passing a vector of keys to navigate down into the snippets map. So,
+for example, to refer to the `:dev` database, use `#nomad/snippet
+[:databases :dev]` in your host config, as follows:
+
+```clojure
+{:nomad/snippets { ... as before ... }
+ :nomad/hosts
+	{"my-host"
+	     {:database #nomad/snippet [:databases :dev]}
+	 "prod-host"
+		 {:database #nomad/snippet [:databases :prod]}}}
+```
+
+When you query the configuration map for the database host, Nomad will
+return your configuration map, but with the snippet dereferenced:
+
+```clojure
+(ns my-ns
+    (:require [nomad :refer [defconfig]
+              [clojure.java.io :as io]]))
+
+(defconfig my-config (io/resource "config/my-config.edn"))
+
+(my-config)
+;; on "my-host"
+;; -> {:database {:host "dev-host"
+                  :user "dev-user"}
+       ... }
+```
 
 
 ## Private configuration
