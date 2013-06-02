@@ -168,7 +168,7 @@ it took to implement this!)
 
 ### 'Snippets'
 
-Snippets (introduces in v0.3.1) allow you to refer to shared snippets
+Snippets (introduced in v0.3.1) allow you to refer to shared snippets
 of configuration from within your individual host/instance maps.
 
 #### Why snippets?
