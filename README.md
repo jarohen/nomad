@@ -38,7 +38,7 @@ features will be backported.
 
 Please see 'Changes', below.
 
-### 'Hello world'
+### 'Hello world!'
 
 Nomad expects your configuration to be stored in an [EDN][1]
 file. Nomad does expect a particular structure for your configuration,
