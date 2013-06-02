@@ -45,40 +45,26 @@
      :config-file config-file
      :config (read-string (slurp* config-file))}))
 
-(defn- update-config-file [current-config]
-  (let [{:keys [config-file]
-         old-etag :etag} current-config
+(defn- update-config-file [current-config config-file]
+  (let [{old-etag :etag} current-config
         new-etag (etag config-file)]
     (if (not= old-etag new-etag)
       (reload-config-file config-file)
       current-config)))
 
-(defn update-host-config [{:keys [public host] :as current-config}]
-  (let [{new-public-etag :etag
-         new-public-config :config} public
+(defn update-specific-config [current-config downstream-key upstream-key selector value]
+  (let [{new-etag :etag
+         new-upstream-config :config} (get current-config upstream-key)
          
-         {old-public-etag :public-etag
-          :as current-host-config} host]
+         {old-etag :upstream-etag
+          :as current-downstream-config} (get current-config downstream-key)]
 
     (assoc current-config
-      :host (if (= new-public-etag old-public-etag)
-              current-host-config
-              {:public-etag new-public-etag
-               :etag new-public-etag
-               :config (get-in new-public-config [:nomad/hosts (get-hostname)])}))))
-
-(defn update-instance-config [{:keys [host instance] :as current-config}]
-  (let [{new-host-etag :etag
-         new-host-config :config} host
-         
-         {old-host-etag :host-etag
-          :as current-instance-config} instance]
-    
-    (assoc current-config
-      :instance (if (= new-host-etag old-host-etag)
-                  current-instance-config
-                  {:host-etag new-host-etag
-                   :config (get-in new-host-config [:nomad/instances (get-instance)])}))))
+      downstream-key (if (= new-etag old-etag)
+                       current-downstream-config
+                       {:upstream-etag new-etag
+                        :etag new-etag
+                        :config (get-in new-upstream-config [selector value])}))))
 
 (defn add-environment [configs]
   (assoc configs
@@ -86,21 +72,34 @@
                   :nomad/instance (get-instance)}))
 
 (defn update-private-config [configs src-key dest-key]
-  configs)
+  (let [{old-public-etag :public-etag
+         old-etag :etag
+         :as current-config} (get configs dest-key)
+
+         {new-public-etag :etag} (get configs src-key)
+
+         private-file (get-in configs [src-key :config :nomad/private-file])]
+    
+    (assoc configs
+      dest-key (if (not= old-public-etag new-public-etag)
+                 (reload-config-file private-file)
+                 (update-config-file current-config private-file)))))
 
 (defn- merge-configs [configs]
-  (-> (deep-merge (get-in configs [:public :config])
-                  (get-in configs [:host :config])
-                  (get-in configs [:instance :config])
-                  (get-in configs [:environment]))
+  (-> (deep-merge (get-in configs [:public :config] {})
+                  (get-in configs [:host :config] {})
+                  (get-in configs [:host-private :config] {})
+                  (get-in configs [:instance :config] {})
+                  (get-in configs [:instance-private :config] {})
+                  (get-in configs [:environment] {}))
       (dissoc :nomad/hosts :nomad/instances :nomad/private-file)
       (with-meta configs)))
 
 (defn- update-config [current-config]
   (-> current-config
-      (update-in [:public] update-config-file)
-      update-host-config
-      update-instance-config
+      (update-in [:public] update-config-file (get-in current-config [:public :config-file]))
+      (update-specific-config :host :public :nomad/hosts (get-hostname))
+      (update-specific-config :instance :host :nomad/instances (get-instance))
       add-environment
       (update-private-config :host :host-private)
       (update-private-config :instance :instance-private)))
