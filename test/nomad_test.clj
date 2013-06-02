@@ -180,6 +180,18 @@
     
     (test/is (= :yes-indeed (get-in returned-config [:host-private :config :private-key])))))
 
+(deftest dereferences-snippet
+  (let [config "{:nomad/hosts {\"my-host\"
+                               {:database #nomad/snippet [:databases :dev]}}
+                 :nomad/snippets {:databases {:dev {:host \"dev-database\"}
+                                              :prod {:host \"prod-database\"}}}}"
+        dummy-config-file (DummyConfigFile. (constantly ::etag)
+                                            (constantly config))
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           {:general {:config-file dummy-config-file}}))]
+    (test/is (= "dev-database" (get-in returned-config [:host :config :database :host])))))
+
 (comment
   ;; This bit is for some manual integration testing
 

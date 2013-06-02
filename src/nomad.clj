@@ -38,12 +38,24 @@
   (etag [_] nil)
   (slurp* [_] (pr-str {})))
 
+(defn nomad-data-readers [snippet-reader]
+  (assoc *data-readers*
+    'nomad/file io/file
+    'nomad/snippet snippet-reader))
+
 (defn- reload-config-file [config-file]
-  (binding [*data-readers* (assoc *data-readers*
-                             'nomad/file io/file)]
+  (let [config-str (slurp* config-file)
+        without-snippets (binding [*data-readers* (nomad-data-readers
+                                                   (constantly ::snippet))]
+                           (read-string config-str))
+        snippets (get without-snippets :nomad/snippets)
+        with-snippets (binding [*data-readers* (nomad-data-readers
+                                                (fn [ks]
+                                                  (get-in snippets ks)))]
+                        (dissoc (read-string config-str) :nomad/snippets))]
     {:etag (etag config-file)
      :config-file config-file
-     :config (read-string (slurp* config-file))}))
+     :config with-snippets}))
 
 (defn- update-config-file [current-config config-file]
   (let [{old-etag :etag} current-config
