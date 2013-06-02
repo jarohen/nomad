@@ -348,6 +348,13 @@ Thanks!
 
 ## Changes
 
+### 0.3.1
+
+Introduced 'snippets' using the `:nomad/snippets` key and the
+`#nomad/snippet` reader macro.
+
+No breaking changes.
+
 ### 0.3.0
 
 0.3.0 introduces a rather large breaking change: in the outputted
