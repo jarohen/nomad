@@ -86,7 +86,7 @@
                  (update-config-file current-config private-file)))))
 
 (defn- merge-configs [configs]
-  (-> (deep-merge (get-in configs [:public :config] {})
+  (-> (deep-merge (get-in configs [:general :config] {})
                   (get-in configs [:host :config] {})
                   (get-in configs [:host-private :config] {})
                   (get-in configs [:instance :config] {})
@@ -97,8 +97,8 @@
 
 (defn- update-config [current-config]
   (-> current-config
-      (update-in [:public] update-config-file (get-in current-config [:public :config-file]))
-      (update-specific-config :host :public :nomad/hosts (get-hostname))
+      (update-in [:general] update-config-file (get-in current-config [:general :config-file]))
+      (update-specific-config :host :general :nomad/hosts (get-hostname))
       (update-specific-config :instance :host :nomad/instances (get-instance))
       add-environment
       (update-private-config :host :host-private)
@@ -110,6 +110,6 @@
        merge-configs)))
 
 (defmacro defconfig [name file-or-resource]
-  `(let [config-ref# (ref {:public {:config-file ~file-or-resource}})]
+  `(let [config-ref# (ref {:general {:config-file ~file-or-resource}})]
      (defn ~name []
        (#'get-current-config config-ref#))))

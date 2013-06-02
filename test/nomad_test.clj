@@ -56,7 +56,7 @@
                                              (pr-str config)))
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
-                           {:public {:config-file dummy-config-file}}))]
+                           {:general {:config-file dummy-config-file}}))]
     (test/is (= 1 (get-in returned-config [:host :config :a])))))
 
 (deftest instance-config
@@ -71,17 +71,17 @@
         returned-config (with-hostname "my-host"
                           (with-instance "DEV2"
                             (#'nomad/update-config
-                             {:public {:config-file dummy-config-file}})))]
+                             {:general {:config-file dummy-config-file}})))]
     (test/is (= 2 (get-in returned-config [:instance :config :a])))))
 
 (deftest merges-public-config
-  (let [config-map {:public
-                    {:config {:a :public
-                              :b {:b1 :public
-                                  :b2 :public
-                                  :b3 :public}
-                              :c :public
-                              :d :public}}
+  (let [config-map {:general
+                    {:config {:a :general
+                              :b {:b1 :general
+                                  :b2 :general
+                                  :b3 :general}
+                              :c :general
+                              :d :general}}
 
                     :host
                     {:config {:c :host
@@ -96,8 +96,8 @@
                     {:nomad/hostname :hostname
                      :nomad/instance :instance-name}}
         merged-config (#'nomad/merge-configs config-map)]
-    (test/is (= :public (get-in merged-config [:a])))
-    (test/is (= :public (get-in merged-config [:b :b1])))
+    (test/is (= :general (get-in merged-config [:a])))
+    (test/is (= :general (get-in merged-config [:b :b1])))
     (test/is (= :host (get-in merged-config [:b :b2])))
     (test/is (= :instance (get-in merged-config [:b :b3])))
     (test/is (= :host (get-in merged-config [:c])))
@@ -108,7 +108,7 @@
 (deftest adds-hostname-key-to-map
     (let [returned-config (with-hostname "dummy-hostname"
                             (#'nomad/update-config
-                             {:public {:config-file (DummyConfigFile.
+                             {:general {:config-file (DummyConfigFile.
                                                      (constantly ::etag)
                                                      (constantly (pr-str {})))}}))]
       (test/is (= "dummy-hostname" (get-in returned-config [:environment :nomad/hostname])))))
@@ -116,7 +116,7 @@
 (deftest adds-instance-key-to-map
   (let [returned-config (with-instance "dummy-instance"
                           (#'nomad/update-config
-                           {:public {:config-file (DummyConfigFile.
+                           {:general {:config-file (DummyConfigFile.
                                                    (constantly ::etag)
                                                    (constantly (pr-str {})))}}))]
     (test/is (= "dummy-instance" (get-in returned-config [:environment :nomad/instance])))))
