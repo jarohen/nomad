@@ -107,14 +107,13 @@ same host. To differentiate between instances, add a `:nomad/instances`
 map under the given host:
 
 ```clojure
-{:nomad/hosts 
-	{"my-laptop" 
-		{:nomad/instances
-			"DEV1"
+{:nomad/hosts
+    {"my-laptop"
+	    {:nomad/instances
+			{"DEV1"
 				{:data-directory "/home/me/.dev1"}
-			"DEV2"
-				{:data-directory "/home/me/.dev2"}}}}
-
+			 "DEV2"
+                {:data-directory "/home/me/.dev2"}}}}}
 ```
 
 To differentiate between instances, set the `NOMAD_INSTANCE`
@@ -138,7 +137,7 @@ the map, with the name of the current instance.
 ### Referring to file paths
 
 You can use the ```#nomad/file``` reader macro to declare files in
-your configuration, in addition to the usual Clojure reader macros. 
+your configuration, in addition to the usual Clojure reader macros.
 
 my-config.edn:
 
@@ -175,7 +174,7 @@ of configuration from within your individual host/instance maps.
 
 I've found, both through my usage of Nomad and through feedback from
 others, that a lot of host-specific config is duplicated between
-similar hosts. 
+similar hosts.
 
 One example that comes up time and time again is database
 configuration - while it does differ from host to host, most hosts
@@ -365,12 +364,12 @@ In general, you should just be able to replace:
 
 * `(get-in (my-config) [:nomad/current-host :x :y])` with `(get-in
   (my-config) [:x :y])`
-  
+
 and
 
 * `(get-in (my-config) [:nomad/current-instance :x :y])` with `(get-in
   (my-config) [:x :y])`
-  
+
 unless you have conflicting key names in your general configuration.
 
 
@@ -399,7 +398,7 @@ Mainly the addition of the private configuration - no breaking changes.
   `nomad-config.edn` file at the root of the classpath. You can now
   specify the file or resource (or many, in fact, if you use several
   `defconfig` invocations) for Nomad to use.
-  
+
 ### 0.1.0
 
 Initial release
