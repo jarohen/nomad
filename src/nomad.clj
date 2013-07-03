@@ -99,6 +99,7 @@
 
 (defn- merge-configs [configs]
   (-> (deep-merge (or (get-in configs [:general :config]) {})
+                  (or (get-in configs [:general-private :config]) {})
                   (or (get-in configs [:host :config]) {})
                   (or (get-in configs [:host-private :config]) {})
                   (or (get-in configs [:instance :config]) {})
@@ -110,6 +111,7 @@
 (defn- update-config [current-config]
   (-> current-config
       (update-in [:general] update-config-file (get-in current-config [:general :config-file]))
+      (update-private-config :general :general-private)
       (update-specific-config :host :general :nomad/hosts (get-hostname))
       (update-specific-config :instance :host :nomad/instances (get-instance))
       add-environment
