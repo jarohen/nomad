@@ -238,11 +238,11 @@ return your configuration map, but with the snippet dereferenced:
 
 Some configuration probably shouldn't belong in source code control -
 i.e. passwords, credentials, production secrets etc. Nomad allows you
-to define 'private configuration files' - a reference to either host-
+to define 'private configuration files' - a reference to either general, host-,
 or instance-specific files outside of your classpath to include in the
 configuration map.
 
-To do this, include a `:nomad/private-file` key in either your host or
+To do this, include a `:nomad/private-file` key in either your general, host, or
 instance config, pointing to a file on the local file system:
 
 my-config.edn:
@@ -290,7 +290,8 @@ decreasing order of preference):
 * Public instance config
 * Private host config
 * Public host config
-* Other config outside of `:nomad/hosts`
+* Private config outside of `:nomad/hosts`
+* General config outside of `:nomad/hosts`
 
 ### Where does that config value come from?!?!
 
