@@ -17,11 +17,18 @@
   (etag [_])
   (slurp* [_]))
 
+(defmacro with-default [default & body]
+  `(or (try
+         ~@body
+         (catch Exception ignore#))
+       ~default))
+
 (extend-protocol ConfigFile
   java.io.File
   (etag [f] {:file f
              :last-mod (.lastModified f)})
-  (slurp* [f] (slurp f))
+  (slurp* [f] (with-default (pr-str {})
+                (slurp f)))
 
   java.net.URL
   (etag [url]
@@ -32,7 +39,8 @@
       ;; (i.e. in a JAR file)
       {:url url}))
 
-  (slurp* [url] (slurp url))
+  (slurp* [url] (with-default (pr-str {})
+                  (slurp url)))
 
   nil
   (etag [_] nil)
