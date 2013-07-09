@@ -22,7 +22,7 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.3.2"]
+[jarohen/nomad "0.3.3"]
 
 ;; bug-fixes only
 [jarohen/nomad "0.2.1"]
