@@ -22,7 +22,7 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.3.1"]
+[jarohen/nomad "0.3.2"]
 
 ;; bug-fixes only
 [jarohen/nomad "0.2.1"]
@@ -347,6 +347,15 @@ repository in the usual way!
 Thanks!
 
 ## Changes
+
+### 0.3.2
+
+Allowed private config in the general section, for private files in a
+known, common location.
+
+No breaking changes.
+
+Thanks Michael Jakl!
 
 ### 0.3.1
 
