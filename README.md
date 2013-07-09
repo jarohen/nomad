@@ -348,6 +348,12 @@ Thanks!
 
 ## Changes
 
+### 0.3.3
+
+Handling gracefully when any of the configuration files don't exist.
+
+No breaking changes.
+
 ### 0.3.2
 
 Allowed private config in the general section, for private files in a
