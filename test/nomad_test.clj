@@ -92,7 +92,7 @@
                     {:config {:d :instance
                               :b {:b3 :instance}}}
 
-                    :environment
+                    :location
                     {:nomad/hostname :hostname
                      :nomad/instance :instance-name}}
         merged-config (#'nomad/merge-configs config-map)]
@@ -111,7 +111,7 @@
                              {:general {:config-file (DummyConfigFile.
                                                      (constantly ::etag)
                                                      (constantly (pr-str {})))}}))]
-      (test/is (= "dummy-hostname" (get-in returned-config [:environment :nomad/hostname])))))
+      (test/is (= "dummy-hostname" (get-in returned-config [:location :nomad/hostname])))))
 
 (deftest adds-instance-key-to-map
   (let [returned-config (with-instance "dummy-instance"
@@ -119,7 +119,7 @@
                            {:general {:config-file (DummyConfigFile.
                                                    (constantly ::etag)
                                                    (constantly (pr-str {})))}}))]
-    (test/is (= "dummy-instance" (get-in returned-config [:environment :nomad/instance])))))
+    (test/is (= "dummy-instance" (get-in returned-config [:location :nomad/instance])))))
 
 (defrecord DummyPrivateFile [etag* content*]
     nomad/ConfigFile
