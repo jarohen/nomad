@@ -13,6 +13,11 @@
    (fn []
      (get (System/getenv) "NOMAD_INSTANCE" :default))))
 
+(def ^:private get-environment
+  (memoize
+   (fn []
+     (get (System/getenv) "NOMAD_ENV" :default))))
+
 (defprotocol ConfigFile
   (etag [_])
   (slurp* [_]))
@@ -86,10 +91,11 @@
                         :etag new-etag
                         :config (get-in new-upstream-config [selector value])}))))
 
-(defn- add-environment [configs]
+(defn- add-location [configs]
   (assoc configs
-    :environment {:nomad/hostname (get-hostname)
-                  :nomad/instance (get-instance)}))
+    :location {:nomad/environment (get-environment)
+               :nomad/hostname (get-hostname)
+               :nomad/instance (get-instance)}))
 
 (defn- update-private-config [configs src-key dest-key]
   (let [{old-public-etag :public-etag
@@ -108,21 +114,25 @@
 (defn- merge-configs [configs]
   (-> (deep-merge (or (get-in configs [:general :config]) {})
                   (or (get-in configs [:general-private :config]) {})
+                  (or (get-in configs [:environment :config]) {})
+                  (or (get-in configs [:environment-private :config]) {})
                   (or (get-in configs [:host :config]) {})
                   (or (get-in configs [:host-private :config]) {})
                   (or (get-in configs [:instance :config]) {})
                   (or (get-in configs [:instance-private :config]) {})
-                  (or (get-in configs [:environment]) {}))
+                  (or (get-in configs [:location]) {}))
       (dissoc :nomad/hosts :nomad/instances :nomad/private-file)
       (with-meta configs)))
 
 (defn- update-config [current-config]
   (-> current-config
       (update-in [:general] update-config-file (get-in current-config [:general :config-file]))
-      (update-private-config :general :general-private)
+      (update-specific-config :environment :general :nomad/environments (get-environment))
       (update-specific-config :host :general :nomad/hosts (get-hostname))
       (update-specific-config :instance :host :nomad/instances (get-instance))
-      add-environment
+      add-location
+      (update-private-config :general :general-private)
+      (update-private-config :environment :environment-private)
       (update-private-config :host :host-private)
       (update-private-config :instance :instance-private)))
 
