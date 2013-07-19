@@ -3,6 +3,8 @@
             [clojure.test :as test :refer [deftest]]
             [clojure.java.io :as io]))
 
+;; TODO formal environment tests
+
 (defmacro with-hostname [hostname & body]
   `(with-redefs [nomad/get-hostname (constantly ~hostname)]
      ~@body))
