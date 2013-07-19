@@ -22,11 +22,14 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.3.3"]
+[jarohen/nomad "0.4.1"]
 
 ;; bug-fixes only
+[jarohen/nomad "0.3.3"]
 [jarohen/nomad "0.2.1"]
 ```
+
+Version 0.4.x introduces 'environments' and has a minor breaking change.
 
 Version 0.3.x introduces a large breaking change to 0.2.x, namely that
 current host/instance config is now all merged into one consolidated
@@ -133,6 +136,28 @@ map:
 
 Similarly to the current host, Nomad adds a `:nomad/instance` key to
 the map, with the name of the current instance.
+
+### Grouping hosts together - Environments (0.4.1)
+
+Version 0.4.1 introduces the concept of 'environments' - similar to
+Rails's `RAILS_ENV`. You can specify configuration for a group of
+machines under the `:nomad/environments` key:
+
+```clojure
+{:nomad/environments
+	{"dev"
+		{:send-emails? false}
+     "prod"
+	    {:send-emails? true}}}
+```
+
+You can then set the `NOMAD_ENV` environment variable when starting
+your REPL/application, and Nomad will merge in the correct environment
+configuration:
+
+```
+NOMAD_ENV=dev lein repl
+```
 
 ### Referring to file paths
 
@@ -307,10 +332,14 @@ meta-information on the returned config:
 
 (meta (my-config))
 ;; -> {:general {:config ...}
+;;     :general-private {:config ...}
+;;     :environment {:config ...}
+;;     :environment-private {:config ...}
 ;;     :host {:config ...}
 ;;     :host-private {:config ...}
 ;;     :instance {:config ...}
-;;     :instance-private {:config ...}}
+;;     :instance-private {:config ...}
+;;     :location {:config ...}}
 ```
 
 
@@ -347,6 +376,14 @@ repository in the usual way!
 Thanks!
 
 ## Changes
+
+### 0.4.1
+
+Adding in concept of 'environments'
+
+Minor breaking change - in the config meta-information, `:environment`
+now points to the current environment's config, and the old
+`:environment` key can now be found under `:location`
 
 ### 0.3.3
 
