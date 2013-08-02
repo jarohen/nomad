@@ -121,7 +121,7 @@
                   (or (get-in configs [:instance :config]) {})
                   (or (get-in configs [:instance-private :config]) {})
                   (or (get-in configs [:location]) {}))
-      (dissoc :nomad/hosts :nomad/instances :nomad/private-file)
+      (dissoc :nomad/hosts :nomad/instances :nomad/environments :nomad/private-file)
       (with-meta configs)))
 
 (defn- update-config [current-config]
