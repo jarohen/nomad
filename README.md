@@ -22,12 +22,15 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.4.1"]
+[jarohen/nomad "0.5.0"]
 
 ;; bug-fixes only
+[jarohen/nomad "0.4.1"]
 [jarohen/nomad "0.3.3"]
 [jarohen/nomad "0.2.1"]
 ```
+
+Version 0.5.x has a minor breaking change around environments
 
 Version 0.4.x introduces 'environments' and has a minor breaking change.
 
@@ -376,6 +379,11 @@ repository in the usual way!
 Thanks!
 
 ## Changes
+
+### 0.5.0
+
+Minor breaking change - removing the whole `:nomad/environments` map
+from the full resulting configuration, in line with `:nomad/hosts`
 
 ### 0.4.1
 

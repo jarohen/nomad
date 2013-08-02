@@ -1,4 +1,4 @@
-(defproject jarohen/nomad "0.4.2-SNAPSHOT"
+(defproject jarohen/nomad "0.5.0"
   :description "A Clojure library to allow Clojure applications to define and access host/instance-specific configuration"
   :url "https://github.com/james-henderson/nomad.git"
   :license {:name "Eclipse Public License"
