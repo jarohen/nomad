@@ -43,13 +43,16 @@
       ;; otherwise, we presume the config file is read-only
       ;; (i.e. in a JAR file)
       {:url url}))
-
   (slurp* [url] (with-default (pr-str {})
                   (slurp url)))
 
   nil
   (etag [_] nil)
-  (slurp* [_] (pr-str {})))
+  (slurp* [_] (pr-str {}))
+
+  java.lang.String
+  (etag [s] s)
+  (slurp* [s] s))
 
 (defn- nomad-data-readers [snippet-reader]
   (assoc *data-readers*
