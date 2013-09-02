@@ -22,7 +22,7 @@ Add the **nomad** dependency to your `project.clj`
 
 ```clojure
 ;; stable
-[jarohen/nomad "0.5.0"]
+[jarohen/nomad "0.5.1"]
 
 ;; bug-fixes only
 [jarohen/nomad "0.4.1"]
@@ -379,6 +379,11 @@ repository in the usual way!
 Thanks!
 
 ## Changes
+
+### 0.5.1
+
+More helpful error message when a snippet can't be found. No breaking
+changes.
 
 ### 0.5.0
 
