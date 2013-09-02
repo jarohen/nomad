@@ -67,7 +67,8 @@
         snippets (get without-snippets :nomad/snippets)
         with-snippets (binding [*data-readers* (nomad-data-readers
                                                 (fn [ks]
-                                                  (get-in snippets ks)))]
+                                                  (or (get-in snippets ks)
+                                                      (throw (RuntimeException. (str "No snippet found for " (pr-str ks)))))))]
                         (dissoc (read-string config-str) :nomad/snippets))]
     {:etag (etag config-file)
      :config-file config-file
