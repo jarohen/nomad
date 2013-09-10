@@ -84,7 +84,7 @@
 (defn- update-specific-config [current-config downstream-key upstream-key selector value]
   (let [{new-etag :etag
          new-upstream-config :config} (get current-config upstream-key)
-         
+
          {old-etag :upstream-etag
           :as current-downstream-config} (get current-config downstream-key)]
 
@@ -109,7 +109,7 @@
          {new-public-etag :etag} (get configs src-key)
 
          private-file (get-in configs [src-key :config :nomad/private-file])]
-    
+
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
@@ -118,10 +118,10 @@
 (defn- merge-configs [configs]
   (-> (deep-merge (or (get-in configs [:general :config]) {})
                   (or (get-in configs [:general-private :config]) {})
-                  (or (get-in configs [:environment :config]) {})
-                  (or (get-in configs [:environment-private :config]) {})
                   (or (get-in configs [:host :config]) {})
                   (or (get-in configs [:host-private :config]) {})
+                  (or (get-in configs [:environment :config]) {})
+                  (or (get-in configs [:environment-private :config]) {})
                   (or (get-in configs [:instance :config]) {})
                   (or (get-in configs [:instance-private :config]) {})
                   (or (get-in configs [:location]) {}))
