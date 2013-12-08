@@ -1,7 +1,8 @@
 (ns nomad
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]
-            [nomad.map :refer [deep-merge]]))
+            [nomad.map :refer [deep-merge]]
+            [clojure.tools.reader.edn :as edn]))
 
 (def ^:private get-hostname
   (memoize
@@ -55,21 +56,22 @@
   (slurp* [s] s))
 
 (defn- nomad-data-readers [snippet-reader]
-  (assoc *data-readers*
-    'nomad/file io/file
-    'nomad/snippet snippet-reader))
+  {'nomad/file io/file
+   'nomad/snippet snippet-reader
+   'nomad/env-var #(System/getenv %)})
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
-        without-snippets (binding [*data-readers* (nomad-data-readers
-                                                   (constantly ::snippet))]
-                           (read-string config-str))
+        without-snippets (edn/read-string {:readers (nomad-data-readers
+                                                     (constantly ::snippet))}
+                                          config-str)
         snippets (get without-snippets :nomad/snippets)
-        with-snippets (binding [*data-readers* (nomad-data-readers
-                                                (fn [ks]
-                                                  (or (get-in snippets ks)
-                                                      (throw (RuntimeException. (str "No snippet found for " (pr-str ks)))))))]
-                        (dissoc (read-string config-str) :nomad/snippets))]
+        with-snippets (-> (edn/read-string {:readers (nomad-data-readers
+                                                      (fn [ks]
+                                                        (or (get-in snippets ks)
+                                                            (throw (RuntimeException. (str "No snippet found for " (pr-str ks)))))))}
+                                           config-str)
+                          (dissoc  :nomad/snippets))]
     {:etag (etag config-file)
      :config-file config-file
      :config with-snippets}))
