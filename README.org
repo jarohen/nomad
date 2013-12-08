@@ -1,0 +1,363 @@
+* nomad
+
+A Clojure library designed to allow Clojure configuration to travel
+between hosts.
+
+You can use Nomad to define and access host-specific configuration,
+which can be saved and tracked through your usual version control
+system. For example, when you're developing a web application, you may
+want the web port to be different between development and production
+instances, or you may want to send out e-mails to clients (or not!)
+depending on the host that the application is running on.
+
+While this does sound an easy thing to do, I have found myself coding
+this in many different projects, so it was time to turn it into a
+separate dependency!
+
+** Usage
+
+*** Set-up
+
+Add the *nomad* dependency to your =project.clj=
+
+#+BEGIN_SRC clojure
+  ;; stable
+  [jarohen/nomad "0.6.0"]
+  
+  ;; bug-fixes only
+  [jarohen/nomad "0.5.1"]
+#+END_SRC
+
+0.6.0 has one breaking change - environment configuration is now given
+preference to host config. The reasoning for this is that, if a
+developer specifies an environment, it is probably because he intends
+to either use or test out that particular environment configuration.
+
+Please see 'Changes', below.
+
+*** 'Hello world!'
+
+Nomad expects your configuration to be stored in an [[https://github.com/edn-format/edn][EDN]]
+file. Nomad does expect a particular structure for your configuration,
+however it will load any data structure in the file.
+
+To load the data structure in the file, use the =defconfig= macro,
+passing in either a file or a classpath resource:
+
+my-config.edn:
+
+#+BEGIN_SRC clojure
+  {:my-key "my-value"}
+#+END_SRC
+
+my_ns.clj:
+
+#+BEGIN_SRC clojure
+  (ns my-ns
+    (:require [nomad :refer [defconfig]]
+              [clojure.java.io :as io]))
+  
+  (defconfig my-config (io/resource "config/my-config.edn"))
+  
+  (my-config)
+  ;; -> {:my-key "my-value"}
+#+END_SRC
+
+*** Caching
+
+Nomad will cache the configuration where possible, but will
+auto-reload the configuration if the underlying file is modified.
+
+*** Differentiating between hosts
+
+To differentiate between different hosts, put the configuration for
+each host under a =:nomad/hosts= key, then under a string key for the given
+hostname, as follows:
+
+#+BEGIN_SRC clojure
+  {:nomad/hosts {"my-laptop" {:key1 "dev-value"}
+                 "my-web-server" {:key1 "prod-value"}}}
+#+END_SRC
+
+Nomad will then merge the configuration of the current host into the
+returned map:
+
+#+BEGIN_SRC clojure
+  
+  (get-in (my-config) [:key1])
+  ;; On "my-laptop", will return "dev-value"
+  ;; On "my-web-server", will return "prod-value"
+  
+  ;; Previously (0.2.x), you would have to have done:
+  ;; (get-in (my-config) [:nomad/current-host :key1])
+#+END_SRC
+
+Nomad also adds the =:nomad/hostname= key to the map, with the
+hostname of the current machine.
+
+*** 'Instances'
+
+Nomad also allows you to set up different 'instances' running on the
+same host. To differentiate between instances, add a =:nomad/instances=
+map under the given host:
+
+#+BEGIN_SRC clojure
+  {:nomad/hosts
+   {"my-laptop"
+    {:nomad/instances
+     {"DEV1"
+      {:data-directory "/home/me/.dev1"}
+      "DEV2"
+      {:data-directory "/home/me/.dev2"}}}}}
+#+END_SRC
+
+To differentiate between instances, set the =NOMAD_INSTANCE=
+environment variable before running your application:
+
+    NOMAD_INSTANCE="DEV2" lein ring server
+
+Then, the current instance configuration will also be merged into the
+map:
+
+#+BEGIN_SRC clojure
+  (let [{:keys [data-directory]} (my-config)]
+    (slurp (io/file data-directory "data-file.edn")))
+  
+  ;; will slurp "/home/me/.dev2/data-file.edn
+#+END_SRC
+
+Similarly to the current host, Nomad adds a =:nomad/instance= key to
+the map, with the name of the current instance.
+
+*** Grouping hosts together - Environments (0.4.1)
+
+Version 0.4.1 introduces the concept of 'environments' - similar to
+Rails's =RAILS_ENV=. You can specify configuration for a group of
+machines under the =:nomad/environments= key:
+
+#+BEGIN_SRC clojure
+  {:nomad/environments
+   {"dev"
+    {:send-emails? false}
+    "prod"
+    {:send-emails? true}}}
+#+END_SRC
+
+You can then set the =NOMAD_ENV= environment variable when starting
+your REPL/application, and Nomad will merge in the correct environment
+configuration:
+
+#+BEGIN_SRC sh
+  NOMAD_ENV=dev lein repl
+#+END_SRC
+
+*** Nomad reader macros
+
+You can use the =#nomad/file= reader macro to declare files in
+your configuration, in addition to the usual Clojure reader macros.
+
+my-config.edn:
+
+#+BEGIN_SRC clojure
+  {:nomad/hosts
+   {"my-host"
+    {:data-directory #nomad/file "/home/james/.my-app"}}}
+#+END_SRC
+
+my_ns.clj:
+
+#+BEGIN_SRC clojure
+  (ns my-ns
+    (:require [nomad :refer [defconfig]
+               [clojure.java.io :as io]]))
+  
+  (defconfig my-config (io/resource "config/my-config.edn"))
+  
+  (type (:data-directory (my-config)))
+  ;; -> java.io.File
+#+END_SRC
+
+(Nomad reader macros only apply for the configuration file, and will
+not impact the rest of your application. Having said this, Nomad is
+open-source - so please feel free to pinch the two lines of code that
+it took to implement this!)
+
+*** 'Snippets'
+
+Snippets (introduced in v0.3.1) allow you to refer to shared snippets
+of configuration from within your individual host/instance maps.
+
+**** Why snippets?
+
+I've found, both through my usage of Nomad and through feedback from
+others, that a lot of host-specific config is duplicated between
+similar hosts.
+
+One example that comes up time and time again is database
+configuration - while it does differ from host to host, most hosts
+select from one of only a small number of distinct configurations
+(i.e. dev databases vs staging vs prod). Previously, this would mean
+either duplicating each database's configuration in each of the hosts
+that used it, or implementing a level of indirection in each project
+that uses Nomad.
+
+The introduction of 'snippets' means that each distinct database
+configuration only needs to be declared once, and each host simply
+contains a pointer to the relevant snippet.
+
+**** Using snippets
+
+Snippets are declared under the =:nomad/snippets= key at the top level
+of your configuration map:
+
+#+BEGIN_SRC clojure
+  {:nomad/snippets
+   {:databases
+    {:dev {:host "dev-host"
+           :user "dev-user"}}
+    :prod {:host "prod-host"
+           :user "prod-user"}}}
+#+END_SRC
+
+You can then refer to them using the =#nomad/snippet= reader macro,
+passing a vector of keys to navigate down into the snippets map. So,
+for example, to refer to the =:dev= database, use =#nomad/snippet
+[:databases :dev]= in your host config, as follows:
+
+#+BEGIN_SRC clojure
+  {:nomad/snippets { ... as before ... }
+   :nomad/hosts
+   {"my-host"
+    {:database #nomad/snippet [:databases :dev]}
+    "prod-host"
+    {:database #nomad/snippet [:databases :prod]}}}
+#+END_SRC
+
+When you query the configuration map for the database host, Nomad will
+return your configuration map, but with the snippet dereferenced:
+
+#+BEGIN_SRC clojure
+  (ns my-ns
+    (:require [nomad :refer [defconfig]
+               [clojure.java.io :as io]]))
+  
+  (defconfig my-config (io/resource "config/my-config.edn"))
+  
+  (my-config)
+  ;; on "my-host"
+  ;; -> {:database {:host "dev-host"
+  ;;                :user "dev-user"}
+  ;;     ... }
+#+END_SRC
+
+
+** Private configuration
+
+Some configuration probably shouldn't belong in source code control -
+i.e. passwords, credentials, production secrets etc. Nomad allows you
+to define 'private configuration files' - a reference to either general, host-,
+or instance-specific files outside of your classpath to include in the
+configuration map.
+
+To do this, include a =:nomad/private-file= key in either your general, host, or
+instance config, pointing to a file on the local file system:
+
+=my-config.edn=:
+
+#+BEGIN_SRC clojure
+  {:nomad/hosts
+   {"my-host"
+    ;; Using the '#nomad/file' reader macro
+    {:nomad/private-file #nomad/file "/home/me/.my-app/secret-config.edn"
+     {:database {:username "my-user"
+                 :password :will-be-overridden}}}}}
+#+END_SRC
+
+=/home/me/.my-app/secret-config.edn=
+(outside of source code)
+
+#+BEGIN_SRC clojure
+  {:database {:password "password123"}}
+  ;; because all the best passwords are... ;)
+#+END_SRC
+
+The private configuration is recursively merged into the public host
+configuration, as follows:
+
+my_ns.clj:
+
+#+BEGIN_SRC clojure
+  (ns my-ns
+    (:require [nomad :refer [defconfig]
+               [clojure.java.io :as io]]))
+  
+  (defconfig my-config (io/resource "config/my-config.edn"))
+  
+  (get-in (my-config) [:database])
+  ;; -> {:username "my-user", :password "password123"}
+#+END_SRC
+
+*** Config in environment variables
+
+You can also refer to environment variables, using the
+=#nomad/env-var= reader macro. This is particularly applicable to
+applications who expect production config (passwords/etc) to be passed
+as environment variables.
+
+Why not just use environment variables? Good question! 
+
+** Order of preference
+
+Nomad now merges all of your public/private/host/instance
+configuration into one big map, with the following priorities (in
+decreasing order of preference):
+
+- Private instance config
+- Public instance config
+- Private environment config
+- Public environment config
+- Private host config
+- Public host config
+- Private config outside of =:nomad/hosts=
+- General config outside of =:nomad/hosts=
+
+*** Where does that config value come from?!?!
+
+Nomad stores the individual components of the configuration as
+meta-information on the returned config:
+
+#+BEGIN_SRC clojure
+  (ns my-ns
+    (:require [nomad :refer [defconfig]
+               [clojure.java.io :as io]]))
+  
+  (defconfig my-config (io/resource "config/my-config.edn"))
+  
+  (meta (my-config))
+  ;; -> {:general {:config ...}
+  ;;     :general-private {:config ...}
+  ;;     :environment {:config ...}
+  ;;     :environment-private {:config ...}
+  ;;     :host {:config ...}
+  ;;     :host-private {:config ...}
+  ;;     :instance {:config ...}
+  ;;     :instance-private {:config ...}
+  ;;     :location {:config ...}}
+#+END_SRC
+
+** Bugs/features/suggestions/questions?
+
+Please feel free to submit bug reports/patches etc through the GitHub
+repository in the usual way!
+
+Thanks!
+
+** Changes
+
+The Nomad changelog has moved to CHANGES.md.
+
+** License
+
+Copyright © 2013 James Henderson
+
+Distributed under the Eclipse Public License, the same as Clojure.
