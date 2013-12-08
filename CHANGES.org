@@ -8,6 +8,9 @@ expected behaviour is that the environment config is honoured.
 Also, added =#nomad/env-var= reader macro to read a config value from
 an environment variable.
 
+Thanks to [[https://github.com/oholworthy][Oliver Holworthy]] for
+these suggestions!
+
 ** 0.5.1
 
 More helpful error message when a snippet can't be found. No breaking
