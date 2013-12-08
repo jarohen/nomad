@@ -201,4 +201,8 @@
 
   (time (with-hostname "my-host"
           (with-instance "test-instance"
-            (test-config)))))
+            (test-config))))
+
+  (with-hostname "my-host"
+    (with-instance "env-var-test"
+      (test-config))))
