@@ -120,10 +120,10 @@
 (defn- merge-configs [configs]
   (-> (deep-merge (or (get-in configs [:general :config]) {})
                   (or (get-in configs [:general-private :config]) {})
-                  (or (get-in configs [:environment :config]) {})
-                  (or (get-in configs [:environment-private :config]) {})
                   (or (get-in configs [:host :config]) {})
                   (or (get-in configs [:host-private :config]) {})
+                  (or (get-in configs [:environment :config]) {})
+                  (or (get-in configs [:environment-private :config]) {})
                   (or (get-in configs [:instance :config]) {})
                   (or (get-in configs [:instance-private :config]) {})
                   (or (get-in configs [:location]) {}))
