@@ -1,14 +1,16 @@
-### 0.5.1
+* Changelog
+
+** 0.5.1
 
 More helpful error message when a snippet can't be found. No breaking
 changes.
 
-### 0.5.0
+** 0.5.0
 
 Minor breaking change - removing the whole `:nomad/environments` map
 from the full resulting configuration, in line with `:nomad/hosts`
 
-### 0.4.1
+** 0.4.1
 
 Adding in concept of 'environments'
 
@@ -16,13 +18,13 @@ Minor breaking change - in the config meta-information, `:environment`
 now points to the current environment's config, and the old
 `:environment` key can now be found under `:location`
 
-### 0.3.3
+** 0.3.3
 
 Handling gracefully when any of the configuration files don't exist.
 
 No breaking changes.
 
-### 0.3.2
+** 0.3.2
 
 Allowed private config in the general section, for private files in a
 known, common location.
@@ -31,14 +33,14 @@ No breaking changes.
 
 Thanks Michael Jakl!
 
-### 0.3.1
+** 0.3.1
 
 Introduced 'snippets' using the `:nomad/snippets` key and the
 `#nomad/snippet` reader macro.
 
 No breaking changes.
 
-### 0.3.0
+** 0.3.0
 
 0.3.0 introduces a rather large breaking change: in the outputted
 configuration map, rather than lots of :nomad/* keys, all of the
@@ -57,7 +59,7 @@ and
 unless you have conflicting key names in your general configuration.
 
 
-### 0.2.1
+** 0.2.1
 
 Mainly the addition of the private configuration - no breaking changes.
 
@@ -69,7 +71,7 @@ Mainly the addition of the private configuration - no breaking changes.
   `:nomad/current-host` and `:nomad/current-instance` maps
   respectively.
 
-### 0.2.0
+** 0.2.0
 
 0.2.0 has introduced a couple of breaking changes:
 
@@ -83,6 +85,6 @@ Mainly the addition of the private configuration - no breaking changes.
   specify the file or resource (or many, in fact, if you use several
   `defconfig` invocations) for Nomad to use.
 
-### 0.1.0
+** 0.1.0
 
 Initial release
