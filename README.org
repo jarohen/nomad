@@ -284,7 +284,7 @@ instance config, pointing to a file on the local file system:
 The private configuration is recursively merged into the public host
 configuration, as follows:
 
-my_ns.clj:
+=my_ns.clj=:
 
 #+BEGIN_SRC clojure
   (ns my-ns
@@ -301,10 +301,29 @@ my_ns.clj:
 
 You can also refer to environment variables, using the
 =#nomad/env-var= reader macro. This is particularly applicable to
-applications who expect production config (passwords/etc) to be passed
+applications who would like passwords/etc to be passed
 as environment variables.
 
-Why not just use environment variables? Good question! 
+In config:
+
+#+BEGIN_SRC clojure
+  {:db-password #nomad/env-var "DB_PASSWORD"}
+#+END_SRC
+
+Starting up:
+
+#+BEGIN_SRC sh
+  DB_PASSWORD="password-123" lein repl
+#+END_SRC
+
+Reading the password from the config:
+
+#+BEGIN_SRC clojure
+  (defconfig config (...))
+  
+  (:db-password (config))
+  ;; -> "password-123"
+#+END_SRC
 
 ** Order of preference
 
