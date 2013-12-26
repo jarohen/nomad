@@ -134,9 +134,11 @@
                  ::etag {:something-private :yes-indeed})}
         dummy-private-file (DummyPrivateFile.
                             ::etag {:something-private :yes-indeed})
-        returned-config (#'nomad/update-config
-                         {:host
-                          {:config {:nomad/private-file dummy-private-file}}})]
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           {:host
+                            {:config {:nomad/private-file dummy-private-file}
+                             :selector-value "my-host"}}))]
     (test/is (= :yes-indeed (get-in returned-config [:host-private :config :something-private])))))
 
 (deftest deep-merges-private-config
@@ -156,13 +158,16 @@
         new-config {:nomad/private-file new-private-file}
         returned-config (#'nomad/update-config
                          {:instance
-                          {:config {:nomad/private-file new-private-file}}
+                          {:config new-config
+                           :selector-value :default}
 
                           :instance-private
                           {:config {:private-key :definitely-not}
                            :etag "old-etag"}})]
       
-    (test/is (= :yes-indeed (get-in returned-config [:instance-private :config :private-key])))))
+    (test/is (= :yes-indeed
+                (get-in returned-config
+                        [:instance-private :config :private-key])))))
 
 (defrecord DummyUnchangingPrivateFile [etag*]
     nomad/ConfigFile
@@ -171,14 +176,15 @@
 
 (deftest caches-private-config-when-nothing-changes
   (let [private-file (DummyUnchangingPrivateFile. "same-private-etag")
-        config {:nomad/private-file private-file}
-        returned-config (#'nomad/update-config
-                         {:host
-                          {:config {:nomad/private-file private-file}}
+        returned-config (with-hostname "my-host"
+                          (#'nomad/update-config
+                           {:host
+                            {:config {:nomad/private-file private-file}
+                             :selector-value "my-host"}
 
-                          :host-private
-                          {:config {:private-key :yes-indeed}
-                           :etag "same-private-etag"}})]
+                            :host-private
+                            {:config {:private-key :yes-indeed}
+                             :etag "same-private-etag"}}))]
     
     (test/is (= :yes-indeed (get-in returned-config [:host-private :config :private-key])))))
 
@@ -193,6 +199,24 @@
                           (#'nomad/update-config
                            {:general {:config-file dummy-config-file}}))]
     (test/is (= "dev-database" (get-in returned-config [:host :config :database :host])))))
+
+(deftest reflects-overrides
+  (let [returned-config (with-hostname "my-host"
+                          (nomad/with-location-override {:instance :not-default}
+                            (#'nomad/update-config
+                             {:host
+                              {:config {:nomad/instances
+                                        {:not-default
+                                         {:value :yes-indeed}}}
+                               :selector-value "my-host"}
+                            
+                              :instance
+                              {:config {:value :definitely-not}
+                               :selector-value :default}})))]
+      
+    (test/is (= :yes-indeed
+                (get-in returned-config
+                        [:instance :config :value])))))
 
 (comment
   ;; This bit is for some manual integration testing
