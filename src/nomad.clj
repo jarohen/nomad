@@ -4,26 +4,34 @@
             [nomad.map :refer [deep-merge]]
             [clojure.tools.reader.edn :as edn]))
 
-(def ^:private get-hostname
-  (memoize
-   (fn []
-     (.trim (:out (sh "hostname"))))))
+(def ^:dynamic *location-override*)
 
-(def ^:private get-instance
-  (memoize
-   (fn []
-     (get (System/getenv) "NOMAD_INSTANCE" :default))))
+(defmacro with-location-override [override & body]
+  `(binding [*location-override* ~override]
+     ~@body))
 
-(def ^:private get-environment
-  (memoize
-   (fn []
-     (get (System/getenv) "NOMAD_ENV" :default))))
+(defmacro ^:private deflocation [name & body]
+  `(let [get-real-location# (memoize
+                             (fn []
+                               ~@body))]
+     (defn- ~(symbol (str "get-" name)) []
+       (or (get *location-override* (keyword '~name))
+           (get-real-location#)))))
+
+(deflocation hostname
+  (.trim (:out (sh "hostname"))))
+
+(deflocation instance
+  (get (System/getenv) "NOMAD_INSTANCE" :default))
+
+(deflocation environment
+  (get (System/getenv) "NOMAD_ENV" :default))
 
 (defprotocol ConfigFile
   (etag [_])
   (slurp* [_]))
 
-(defmacro with-default [default & body]
+(defmacro ^:private with-default [default & body]
   `(or (try
          ~@body
          (catch Exception ignore#))
@@ -88,13 +96,15 @@
          new-upstream-config :config} (get current-config upstream-key)
          
          {old-etag :upstream-etag
+          old-selector-value :selector-value
           :as current-downstream-config} (get current-config downstream-key)]
-
     (assoc current-config
-      downstream-key (if (= new-etag old-etag)
+      downstream-key (if (and (= new-etag old-etag)
+                              (= old-selector-value value))
                        current-downstream-config
                        {:upstream-etag new-etag
                         :etag new-etag
+                        :selector-value value
                         :config (get-in new-upstream-config [selector value])}))))
 
 (defn- add-location [configs]
@@ -105,13 +115,11 @@
 
 (defn- update-private-config [configs src-key dest-key]
   (let [{old-public-etag :public-etag
-         old-etag :etag
          :as current-config} (get configs dest-key)
 
          {new-public-etag :etag} (get configs src-key)
 
          private-file (get-in configs [src-key :config :nomad/private-file])]
-    
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
