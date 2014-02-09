@@ -22,7 +22,7 @@ Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
   ;; stable
-  [jarohen/nomad "0.6.1"]
+  [jarohen/nomad "0.6.2"]
   
   ;; bug-fixes only
   [jarohen/nomad "0.5.1"]
@@ -322,6 +322,8 @@ configuration, as follows:
 
 *** Config in environment variables
 
+**** Strings
+
 You can also refer to environment variables, using the
 =#nomad/env-var= reader macro. This is particularly applicable to
 applications who would like passwords/etc to be passed
@@ -346,6 +348,37 @@ Reading the password from the config:
   
   (:db-password (config))
   ;; -> "password-123"
+#+END_SRC
+
+**** EDN environment variables
+
+In the above case, Nomad will treat all environment variable values as
+strings. You can also pass EDN values and have Nomad =read-string=
+them for you by using the =#nomad/edn-env-var= reader macro. This is
+also useful for reading in numeric values!
+
+In config:
+
+#+BEGIN_SRC clojure
+  {:port #nomad/edn-env-var "PORT"}
+#+END_SRC
+
+Starting up (don't forget to escape any special shell chars!):
+
+#+BEGIN_SRC sh
+  PORT=3000 lein repl
+#+END_SRC
+
+Reading the password from the config:
+
+#+BEGIN_SRC clojure
+  (defconfig config (...))
+  
+  (:port (config))
+  ;; -> 3000
+  
+  (type (:port (config)))
+  ;; -> java.lang.Long
 #+END_SRC
 
 ** Order of preference

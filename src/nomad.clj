@@ -63,10 +63,28 @@
   (etag [s] s)
   (slurp* [s] s))
 
+(defn read-edn-env-var [env-var]
+  (let [val-str (System/getenv env-var)]
+    (or (try
+          (edn/read-string val-str)
+
+          (catch Throwable e
+            (throw (ex-info "Can't read-string edn-env-var:"
+                            {:env-var env-var
+                             :val-str val-str}))))
+
+        ;; This does throw an exception when the env-var is literal
+        ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
+        ;; until tools.reader accepts nil as a return value from a
+        ;; reader macro fn
+        (throw (ex-info "No value provided for edn-env-var"
+                        {:env-var env-var})))))
+
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(System/getenv %)})
+   'nomad/env-var #(System/getenv %)
+   'nomad/edn-env-var read-edn-env-var})
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
@@ -77,7 +95,7 @@
         with-snippets (-> (edn/read-string {:readers (nomad-data-readers
                                                       (fn [ks]
                                                         (or (get-in snippets ks)
-                                                            (throw (RuntimeException. (str "No snippet found for " (pr-str ks)))))))}
+                                                            (throw (ex-info "No snippet found for keys" {:keys ks})))))}
                                            config-str)
                           (dissoc  :nomad/snippets))]
     {:etag (etag config-file)
