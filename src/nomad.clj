@@ -63,15 +63,24 @@
   (etag [s] s)
   (slurp* [s] s))
 
+
+
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
    'nomad/env-var #(System/getenv %)
-   'nomad/edn-env-var #(let [val-str (System/getenv %)]
-                         (try
-                           (edn/read-string val-str)
-                           (catch Exception e
-                             (throw (ex-info "Can't read-string env-var:" {:val-str val-str})))))})
+   
+   'nomad/edn-env-var (fn [env-var]
+                        (let [val-str (System/getenv env-var)]
+                          (or (try
+                                (edn/read-string val-str)
+                                
+                                
+                                (catch Throwable e
+                                  (throw (ex-info "Can't read-string env-var:" {:env-var env-var
+                                                                                :val-str val-str}))))
+                              
+                              (throw (ex-info "No env-var provided" {:env-var env-var})))))})
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
