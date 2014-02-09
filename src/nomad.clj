@@ -69,7 +69,7 @@
    'nomad/env-var #(System/getenv %)
    'nomad/edn-env-var #(let [val-str (System/getenv %)]
                          (try
-                           (read-string val-str)
+                           (edn/read-string val-str)
                            (catch Exception e
                              (throw (ex-info "Can't read-string env-var:" {:val-str val-str})))))})
 
