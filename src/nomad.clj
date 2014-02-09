@@ -66,7 +66,12 @@
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(System/getenv %)})
+   'nomad/env-var #(System/getenv %)
+   'nomad/edn-env-var #(let [val-str (System/getenv %)]
+                         (try
+                           (read-string val-str)
+                           (catch Exception e
+                             (throw (ex-info "Can't read-string env-var:" {:val-str val-str})))))})
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
@@ -77,7 +82,7 @@
         with-snippets (-> (edn/read-string {:readers (nomad-data-readers
                                                       (fn [ks]
                                                         (or (get-in snippets ks)
-                                                            (throw (RuntimeException. (str "No snippet found for " (pr-str ks)))))))}
+                                                            (throw (ex-info "No snippet found for keys" {:keys ks})))))}
                                            config-str)
                           (dissoc  :nomad/snippets))]
     {:etag (etag config-file)
