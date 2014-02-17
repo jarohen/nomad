@@ -1,4 +1,10 @@
 * Changelog
+** 0.6.3
+
+No breaking changes, changing =#nomad/edn-env-var= to return =nil=
+rather than throwing an ugly exception on missing environment
+variables.
+
 ** 0.6.2
 
 No breaking changes, adding =#nomad/edn-env-var= reader macro.
