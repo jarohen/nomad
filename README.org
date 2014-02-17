@@ -22,7 +22,7 @@ Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
   ;; stable
-  [jarohen/nomad "0.6.2"]
+  [jarohen/nomad "0.6.3"]
   
   ;; bug-fixes only
   [jarohen/nomad "0.5.1"]
@@ -369,7 +369,7 @@ Starting up (don't forget to escape any special shell chars!):
   PORT=3000 lein repl
 #+END_SRC
 
-Reading the password from the config:
+Reading the port from the config:
 
 #+BEGIN_SRC clojure
   (defconfig config (...))
