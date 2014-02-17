@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]
             [nomad.map :refer [deep-merge]]
-            [clojure.tools.reader.edn :as edn]))
+            [clojure.tools.reader.edn :as edn]
+            [clojure.walk :refer [postwalk-replace]]))
 
 (def ^:dynamic *location-override*)
 
@@ -63,7 +64,7 @@
   (etag [s] s)
   (slurp* [s] s))
 
-(defn read-edn-env-var [env-var]
+(defn- read-edn-env-var [env-var]
   (let [val-str (System/getenv env-var)]
     (or (try
           (edn/read-string val-str)
@@ -73,18 +74,20 @@
                             {:env-var env-var
                              :val-str val-str}))))
 
-        ;; This does throw an exception when the env-var is literal
+        ;; This does return :nomad/nil when the env-var is literal
         ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
         ;; until tools.reader accepts nil as a return value from a
         ;; reader macro fn
-        (throw (ex-info "No value provided for edn-env-var"
-                        {:env-var env-var})))))
+        :nomad/nil)))
 
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(System/getenv %)
+   'nomad/env-var #(or (System/getenv %) :nomad/nil)
    'nomad/edn-env-var read-edn-env-var})
+
+(defn- replace-nomad-nils [m]
+  (postwalk-replace {:nomad/nil nil} m))
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
@@ -97,7 +100,8 @@
                                                         (or (get-in snippets ks)
                                                             (throw (ex-info "No snippet found for keys" {:keys ks})))))}
                                            config-str)
-                          (dissoc  :nomad/snippets))]
+                          (dissoc :nomad/snippets)
+                          replace-nomad-nils)]
     {:etag (etag config-file)
      :config-file config-file
      :config with-snippets}))
