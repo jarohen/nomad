@@ -26,7 +26,9 @@
   (get (System/getenv) "NOMAD_INSTANCE" :default))
 
 (deflocation environment
-  (get (System/getenv) "NOMAD_ENV" :default))
+  (or (System/getProperty "nomad.env")
+      (get (System/getenv) "NOMAD_ENV")
+      :default))
 
 (defprotocol ConfigFile
   (etag [_])
