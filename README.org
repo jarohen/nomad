@@ -151,6 +151,25 @@ configuration:
   NOMAD_ENV=dev lein repl
 #+END_SRC
 
+Alternatively, (from v0.6.4) you can set the =nomad.env= Java property
+to achieve the same effect. This means that you can switch the Nomad
+environment in your Lein profiles, as follows:
+
+#+BEGIN_SRC clojure
+  {;; ...
+
+   :jvm-opts ["-Dnomad.env=dev"]
+
+   :profiles {:prod
+              {:jvm-opts ["-Dnomad.env=prod"]}}
+
+   ;; ...
+   }
+#+END_SRC
+
+The Java property takes precedence over the environment variable, if
+both are set.
+
 *** Testing Nomad
 
 You can test how Nomad will react in different locations (e.g. if you
