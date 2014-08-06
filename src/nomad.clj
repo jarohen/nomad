@@ -5,26 +5,19 @@
             [clojure.tools.reader.edn :as edn]
             [clojure.walk :refer [postwalk-replace]]))
 
-;; ## Declarations
-
-(declare safe-slurp)
-
-
-;; ## Vars
-
-(def ^:private config-cache
-  (atom {}))
-
-
-;; ## ConfigFile Protocol
-
 (defprotocol ConfigFile
   (etag [_])
   (slurp* [_]))
 
+(defn- safe-slurp [f default]
+  (try
+    (slurp f)
+    (catch Exception e
+      default)))
+
 (extend-protocol ConfigFile
   java.io.File
-  (etag [f] {:file     f
+  (etag [f] {:file  f
              :last-mod (.lastModified f)})
   (slurp* [f] (safe-slurp f (pr-str {})))
 
@@ -46,33 +39,18 @@
   (etag [s] s)
   (slurp* [s] s))
 
-
-;; ## Private Functions
-
-(defn- get-hostname
-  []
+(defn- get-hostname []
   (.trim (:out (sh "hostname"))))
 
-(defn- get-instance
-  []
+(defn- get-instance []
   (get (System/getenv) "NOMAD_INSTANCE" :default))
 
-(defn- get-environment
-  []
-  (or
-   (System/getProperty "nomad.env")
-   (get (System/getenv) "NOMAD_ENV")
-   :default))
+(defn- get-environment []
+  (or (System/getProperty "nomad.env")
+      (get (System/getenv) "NOMAD_ENV")
+      :default))
 
-(defn- safe-slurp
-  [f default]
-  (try
-    (slurp f)
-    (catch Exception e
-      default)))
-
-(defn- read-edn-env-var
-  [env-var]
+(defn- read-edn-env-var [env-var]
   (let [val-str (System/getenv env-var)]
     (or
      (try
@@ -88,87 +66,78 @@
      ;; reader macro fn
      :nomad/nil)))
 
-(defn- nomad-data-readers
-  [snippet-reader]
-  {'nomad/file        io/file
-   'nomad/snippet     snippet-reader
-   'nomad/env-var     #(or (System/getenv %) :nomad/nil)
+(defn- nomad-data-readers [snippet-reader]
+  {'nomad/file io/file
+   'nomad/snippet snippet-reader
+   'nomad/env-var #(or (System/getenv %) :nomad/nil)
    'nomad/edn-env-var read-edn-env-var})
 
-(defn- replace-nomad-nils
-  [m]
+(defn- replace-nomad-nils [m]
   (postwalk-replace {:nomad/nil nil} m))
 
-(defn- readers-without-snippets
-  []
+(defn- readers-without-snippets []
   {:readers (nomad-data-readers (constantly ::snippet))})
 
-(defn- readers-with-snippets
-  [snippets]
+(defn- readers-with-snippets [snippets]
   {:readers (nomad-data-readers
              (fn [ks]
                (or
                 (get-in snippets ks)
                 (throw (ex-info "No snippet found for keys" {:keys ks})))))})
 
-(defn- reload-config-file
-  [config-file]
-  (let [config-str       (slurp* config-file)
+(defn- reload-config-file [config-file]
+  (let [config-str (slurp* config-file)
         without-snippets (edn/read-string (readers-without-snippets) config-str)
-        snippets         (get without-snippets :nomad/snippets)
-        with-snippets    (-> (edn/read-string (readers-with-snippets snippets)
-                                              config-str)
-                             (dissoc :nomad/snippets)
-                             replace-nomad-nils)]
-    {:etag        (etag config-file)
+        snippets (get without-snippets :nomad/snippets)
+        with-snippets (-> (edn/read-string (readers-with-snippets snippets)
+                                           config-str)
+                          (dissoc :nomad/snippets)
+                          replace-nomad-nils)]
+    {:etag  (etag config-file)
      :config-file config-file
-     :config      with-snippets}))
+     :config  with-snippets}))
 
-(defn- update-config-file
-  [current-config config-file]
+(defn- update-config-file [current-config config-file]
   (let [{old-etag :etag} current-config
         new-etag (etag config-file)]
     (if (not= old-etag new-etag)
       (reload-config-file config-file)
       current-config)))
 
-(defn- update-specific-config
-  [current-config downstream-key upstream-key selector value]
-  (let [{new-etag            :etag
-         new-upstream-config :config}    (get current-config upstream-key)
+(defn- update-specific-config [current-config downstream-key upstream-key selector value]
+  (let [{new-etag :etag
+         new-upstream-config :config} (get current-config upstream-key)
 
-         {old-etag           :upstream-etag
+         {old-etag :upstream-etag
           old-selector-value :selector-value
           :as current-downstream-config} (get current-config downstream-key)]
     (assoc current-config
       downstream-key (if (and (= new-etag old-etag)
                               (= old-selector-value value))
                        current-downstream-config
-                       {:upstream-etag  new-etag
-                        :etag           new-etag
+                       {:upstream-etag new-etag
+                        :etag new-etag
                         :selector-value value
-                        :config         (get-in new-upstream-config [selector value])}))))
+                        :config (get-in new-upstream-config [selector value])}))))
 
-(defn- add-location
-  [configs]
+(defn- add-location [configs]
   (assoc configs
     :location {:nomad/environment (get-environment)
-               :nomad/hostname    (get-hostname)
-               :nomad/instance    (get-instance)}))
+               :nomad/hostname (get-hostname)
+               :nomad/instance (get-instance)}))
 
-(defn- update-private-config
-  [configs src-key dest-key]
+(defn- update-private-config [configs src-key dest-key]
   (let [{old-public-etag :public-etag
-         :as current-config}    (get configs dest-key)
+         :as current-config} (get configs dest-key)
+         
         {new-public-etag :etag} (get configs src-key)
-         private-file           (get-in configs [src-key :config :nomad/private-file])]
+        private-file (get-in configs [src-key :config :nomad/private-file])]
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
                  (update-config-file current-config private-file)))))
 
-(defn- merge-configs
-  [configs]
+(defn- merge-configs [configs]
   (-> (deep-merge (or (get-in configs [:general :config]) {})
                   (or (get-in configs [:general-private :config]) {})
                   (or (get-in configs [:host :config]) {})
@@ -181,8 +150,7 @@
       (dissoc :nomad/hosts :nomad/instances :nomad/environments :nomad/private-file)
       (with-meta configs)))
 
-(defn- update-config
-  [current-config]
+(defn- update-config [current-config]
   (-> current-config
       (update-in [:general] update-config-file (get-in current-config [:general :config-file]))
       (update-specific-config :environment :general :nomad/environments (get-environment))
@@ -194,36 +162,23 @@
       (update-private-config :host :host-private)
       (update-private-config :instance :instance-private)))
 
-(defn- cache-config!
-  [cache-key config]
-  (swap! config-cache assoc cache-key config))
+;; ---------- PUBLIC API ----------
 
-(defn- get-current-config
-  [file-or-resource]
-  (let [config-map     {:general {:config-file file-or-resource}}
+(defn read-config [file-or-resource & [{:keys [cached-config]}]]
+  (let [config-map (or (meta cached-config)
+                       {:general {:config-file file-or-resource}})
         updated-config (update-config config-map)]
-    (cache-config! file-or-resource updated-config)
     (merge-configs updated-config)))
 
-
-;; ## Macros
-
-(defmacro with-location-override
-  [override & body]
+(defmacro with-location-override [override & body]
   (let [[override-type override-value] (first override)
-        override-fn-name               (str "nomad/get-" (name override-type))
-        override-fn-sym                (symbol override-fn-name)]
+        override-fn-name (str "nomad/get-" (name override-type))
+        override-fn-sym (symbol override-fn-name)]
     `(with-redefs [~override-fn-sym (constantly ~override-value)]
        ~@body)))
 
-(defmacro defconfig
-  [name file-or-resource]
+(defmacro defconfig [name file-or-resource]
   `(defn ~name []
-    (#'get-current-config ~file-or-resource)))
+     (#'get-current-config ~file-or-resource)))
 
 
-;; ## Public Config Functions
-
-(defn read-config
-  [file-or-resource]
-  (get-current-config file-or-resource))
