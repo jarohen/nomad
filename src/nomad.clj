@@ -178,7 +178,11 @@
        ~@body)))
 
 (defmacro defconfig [name file-or-resource]
-  `(defn ~name []
-     (#'get-current-config ~file-or-resource)))
+  `(let [!cached-config# (atom nil)]
+     (defn ~name []
+       (swap! !cached-config#
+              (fn [cached-config#]
+                (read-config ~file-or-resource
+                             {:cached-config cached-config#}))))))
 
 
