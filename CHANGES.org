@@ -1,4 +1,18 @@
 * Changelog
+
+** 0.6.5
+
+Thanks to [[https://github.com/dparis][Dylan Paris]] for his work on this release :)
+
+Big refactoring, adding =read-config= function. No need to have a
+=defconfig= if you only want to read the config once and don't want to
+create a var.
+
+** 0.6.4
+
+No breaking changes - can now set the Nomad environment by setting the
+nomad.env Java system property
+
 ** 0.6.3
 
 No breaking changes, changing =#nomad/edn-env-var= to return =nil=
