@@ -129,7 +129,7 @@
 (defn- update-private-config [configs src-key dest-key]
   (let [{old-public-etag :public-etag
          :as current-config} (get configs dest-key)
-         
+
         {new-public-etag :etag} (get configs src-key)
         private-file (get-in configs [src-key :config :nomad/private-file])]
     (assoc configs
@@ -170,12 +170,11 @@
         updated-config (update-config config-map)]
     (merge-configs updated-config)))
 
-(defmacro with-location-override [override & body]
-  (let [[override-type override-value] (first override)
-        override-fn-name (str "nomad/get-" (name override-type))
-        override-fn-sym (symbol override-fn-name)]
-    `(with-redefs [~override-fn-sym (constantly ~override-value)]
-       ~@body)))
+(defmacro with-location-override [override-map & body]
+  `(with-redefs [~@(mapcat (fn [[override-sym override-value]]
+                             [(symbol (str "nomad/get-" (name override-sym))) `(constantly ~override-value)])
+                           override-map)]
+     ~@body))
 
 (defmacro defconfig [name file-or-resource]
   `(let [!cached-config# (atom nil)]
@@ -184,5 +183,3 @@
               (fn [cached-config#]
                 (read-config ~file-or-resource
                              {:cached-config cached-config#}))))))
-
-
