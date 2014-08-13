@@ -162,11 +162,6 @@
       (update-private-config :host :host-private)
       (update-private-config :instance :instance-private)))
 
-(defn- build-override-redef-tuples [override-map]
-  (map (fn [[override-type override-value]]
-         [(symbol (str "nomad/get-" (name override-type))) override-value])
-       override-map))
-
 ;; ---------- PUBLIC API ----------
 
 (defn read-config [file-or-resource & [{:keys [cached-config]}]]
@@ -175,12 +170,11 @@
         updated-config (update-config config-map)]
     (merge-configs updated-config)))
 
-(defmacro with-location-override [override & body]
-  (let [redef-bindings (build-override-redef-tuples override)]
-    `(with-redefs [~@(mapcat (fn [[override-sym override-value]]
-                               [override-sym `(constantly ~override-value)])
-                             redef-bindings)]
-       ~@body)))
+(defmacro with-location-override [override-map & body]
+  `(with-redefs [~@(mapcat (fn [[override-sym override-value]]
+                             [(symbol (str "nomad/get-" (name override-sym))) `(constantly ~override-value)])
+                           override-map)]
+     ~@body))
 
 (defmacro defconfig [name file-or-resource]
   `(let [!cached-config# (atom nil)]
