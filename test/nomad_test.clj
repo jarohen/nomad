@@ -1,5 +1,5 @@
 (ns nomad-test
-  (:require [nomad :refer [defconfig]]
+  (:require [nomad :refer [defconfig read-config]]
             [clojure.test :as test :refer [deftest]]
             [clojure.java.io :as io]))
 
@@ -11,6 +11,10 @@
 
 (defmacro with-instance [instance & body]
   `(with-redefs [nomad/get-instance (constantly ~instance)]
+     ~@body))
+
+(defmacro with-environment [environment & body]
+  `(with-redefs [nomad/get-environment (constantly ~environment)]
      ~@body))
 
 (defrecord DummyConfigFile [_etag _content]
@@ -108,25 +112,25 @@
     (test/is (= :instance-name (get-in merged-config [:nomad/instance])))))
 
 (deftest adds-hostname-key-to-map
-    (let [returned-config (with-hostname "dummy-hostname"
-                            (#'nomad/update-config
-                             {:general {:config-file (DummyConfigFile.
-                                                     (constantly ::etag)
-                                                     (constantly (pr-str {})))}}))]
-      (test/is (= "dummy-hostname" (get-in returned-config [:location :nomad/hostname])))))
+  (let [returned-config (with-hostname "dummy-hostname"
+                          (#'nomad/update-config
+                           {:general {:config-file (DummyConfigFile.
+                                                    (constantly ::etag)
+                                                    (constantly (pr-str {})))}}))]
+    (test/is (= "dummy-hostname" (get-in returned-config [:location :nomad/hostname])))))
 
 (deftest adds-instance-key-to-map
   (let [returned-config (with-instance "dummy-instance"
                           (#'nomad/update-config
                            {:general {:config-file (DummyConfigFile.
-                                                   (constantly ::etag)
-                                                   (constantly (pr-str {})))}}))]
+                                                    (constantly ::etag)
+                                                    (constantly (pr-str {})))}}))]
     (test/is (= "dummy-instance" (get-in returned-config [:location :nomad/instance])))))
 
 (defrecord DummyPrivateFile [etag* content*]
-    nomad/ConfigFile
-    (etag [_] etag*)
-    (slurp* [_] (pr-str content*)))
+  nomad/ConfigFile
+  (etag [_] etag*)
+  (slurp* [_] (pr-str content*)))
 
 (deftest loads-private-config
   (let [config {:nomad/private-file
@@ -149,7 +153,7 @@
                 :host-private
                 {:config {:database {:password "password123"}}}}
         returned-config (#'nomad/merge-configs config)]
-    (test/is (= "my-user" (get-in returned-config [:database :username]))) 
+    (test/is (= "my-user" (get-in returned-config [:database :username])))
     (test/is (= "password123" (get-in returned-config [:database :password])))))
 
 (deftest reloads-private-config-when-private-file-changes
@@ -164,15 +168,14 @@
                           :instance-private
                           {:config {:private-key :definitely-not}
                            :etag "old-etag"}})]
-      
     (test/is (= :yes-indeed
                 (get-in returned-config
                         [:instance-private :config :private-key])))))
 
 (defrecord DummyUnchangingPrivateFile [etag*]
-    nomad/ConfigFile
-    (etag [_] etag*)
-    (slurp* [_] (throw (AssertionError. "Shouldn't reload!"))))
+  nomad/ConfigFile
+  (etag [_] etag*)
+  (slurp* [_] (throw (AssertionError. "Shouldn't reload!"))))
 
 (deftest caches-private-config-when-nothing-changes
   (let [private-file (DummyUnchangingPrivateFile. "same-private-etag")
@@ -198,25 +201,52 @@
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
                            {:general {:config-file dummy-config-file}}))]
+    
     (test/is (= "dev-database" (get-in returned-config [:host :config :database :host])))))
 
 (deftest reflects-overrides
-  (let [returned-config (with-hostname "my-host"
-                          (nomad/with-location-override {:instance :not-default}
-                            (#'nomad/update-config
-                             {:host
-                              {:config {:nomad/instances
-                                        {:not-default
-                                         {:value :yes-indeed}}}
-                               :selector-value "my-host"}
-                            
-                              :instance
-                              {:config {:value :definitely-not}
-                               :selector-value :default}})))]
-      
-    (test/is (= :yes-indeed
-                (get-in returned-config
-                        [:instance :config :value])))))
+  (let [config {:nomad/environments
+                {:default
+                 {:test-key-1 "test-value-1"}
+                 "override-env"
+                 {:test-key-1 "test-value-1-override"}}
+
+                :nomad/hosts
+                {"default-host"
+                 {:nomad/instances
+                  {:default
+                   {:test-key-2 "test-value-2"}}}
+                 "override-host"
+                 {:nomad/instances
+                  {"override-instance"
+                   {:test-key-2 "test-value-2-override"}}}}}
+        
+        dummy-config-file (DummyConfigFile. (constantly ::etag)
+                                            (constantly (pr-str config)))
+        
+        default-config (with-hostname "default-host"
+                         (with-environment :default
+                           (read-config dummy-config-file)))
+        
+        override-config (nomad/with-location-override {:environment "override-env"
+                                                       :hostname    "override-host"
+                                                       :instance    "override-instance"}
+                          (read-config dummy-config-file))
+        
+        expected-default {:nomad/instance    :default
+                          :nomad/hostname    "default-host"
+                          :nomad/environment :default
+                          :test-key-1        "test-value-1"
+                          :test-key-2        "test-value-2"}
+
+        expected-override {:nomad/instance    "override-instance"
+                           :nomad/hostname    "override-host"
+                           :nomad/environment "override-env"
+                           :test-key-1        "test-value-1-override"
+                           :test-key-2        "test-value-2-override"}]
+
+    (test/is (= default-config expected-default))
+    (test/is (= override-config expected-override))))
 
 (comment
   ;; This bit is for some manual integration testing
