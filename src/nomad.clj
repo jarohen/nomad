@@ -5,47 +5,21 @@
             [clojure.tools.reader.edn :as edn]
             [clojure.walk :refer [postwalk-replace]]))
 
-(def ^:dynamic *location-override*)
-
-(defmacro with-location-override [override & body]
-  `(binding [*location-override* ~override]
-     ~@body))
-
-(defmacro ^:private deflocation [name & body]
-  `(let [get-real-location# (memoize
-                             (fn []
-                               ~@body))]
-     (defn- ~(symbol (str "get-" name)) []
-       (or (get *location-override* (keyword '~name))
-           (get-real-location#)))))
-
-(deflocation hostname
-  (.trim (:out (sh "hostname"))))
-
-(deflocation instance
-  (get (System/getenv) "NOMAD_INSTANCE" :default))
-
-(deflocation environment
-  (or (System/getProperty "nomad.env")
-      (get (System/getenv) "NOMAD_ENV")
-      :default))
-
 (defprotocol ConfigFile
   (etag [_])
   (slurp* [_]))
 
-(defmacro ^:private with-default [default & body]
-  `(or (try
-         ~@body
-         (catch Exception ignore#))
-       ~default))
+(defn- safe-slurp [f default]
+  (try
+    (slurp f)
+    (catch Exception e
+      default)))
 
 (extend-protocol ConfigFile
   java.io.File
-  (etag [f] {:file f
+  (etag [f] {:file  f
              :last-mod (.lastModified f)})
-  (slurp* [f] (with-default (pr-str {})
-                (slurp f)))
+  (slurp* [f] (safe-slurp f (pr-str {})))
 
   java.net.URL
   (etag [url]
@@ -55,8 +29,7 @@
       ;; otherwise, we presume the config file is read-only
       ;; (i.e. in a JAR file)
       {:url url}))
-  (slurp* [url] (with-default (pr-str {})
-                  (slurp url)))
+  (slurp* [url] (safe-slurp url (pr-str {})))
 
   nil
   (etag [_] nil)
@@ -66,21 +39,32 @@
   (etag [s] s)
   (slurp* [s] s))
 
+(defn- get-hostname []
+  (.trim (:out (sh "hostname"))))
+
+(defn- get-instance []
+  (get (System/getenv) "NOMAD_INSTANCE" :default))
+
+(defn- get-environment []
+  (or (System/getProperty "nomad.env")
+      (get (System/getenv) "NOMAD_ENV")
+      :default))
+
 (defn- read-edn-env-var [env-var]
   (let [val-str (System/getenv env-var)]
-    (or (try
-          (edn/read-string val-str)
+    (or
+     (try
+       (edn/read-string val-str)
+       (catch Throwable e
+         (throw (ex-info "Can't read-string edn-env-var:"
+                         {:env-var env-var
+                          :val-str val-str}))))
 
-          (catch Throwable e
-            (throw (ex-info "Can't read-string edn-env-var:"
-                            {:env-var env-var
-                             :val-str val-str}))))
-
-        ;; This does return :nomad/nil when the env-var is literal
-        ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
-        ;; until tools.reader accepts nil as a return value from a
-        ;; reader macro fn
-        :nomad/nil)))
+     ;; This does return :nomad/nil when the env-var is literal
+     ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
+     ;; until tools.reader accepts nil as a return value from a
+     ;; reader macro fn
+     :nomad/nil)))
 
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
@@ -91,22 +75,27 @@
 (defn- replace-nomad-nils [m]
   (postwalk-replace {:nomad/nil nil} m))
 
+(defn- readers-without-snippets []
+  {:readers (nomad-data-readers (constantly ::snippet))})
+
+(defn- readers-with-snippets [snippets]
+  {:readers (nomad-data-readers
+             (fn [ks]
+               (or
+                (get-in snippets ks)
+                (throw (ex-info "No snippet found for keys" {:keys ks})))))})
+
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
-        without-snippets (edn/read-string {:readers (nomad-data-readers
-                                                     (constantly ::snippet))}
-                                          config-str)
+        without-snippets (edn/read-string (readers-without-snippets) config-str)
         snippets (get without-snippets :nomad/snippets)
-        with-snippets (-> (edn/read-string {:readers (nomad-data-readers
-                                                      (fn [ks]
-                                                        (or (get-in snippets ks)
-                                                            (throw (ex-info "No snippet found for keys" {:keys ks})))))}
+        with-snippets (-> (edn/read-string (readers-with-snippets snippets)
                                            config-str)
                           (dissoc :nomad/snippets)
                           replace-nomad-nils)]
-    {:etag (etag config-file)
+    {:etag  (etag config-file)
      :config-file config-file
-     :config with-snippets}))
+     :config  with-snippets}))
 
 (defn- update-config-file [current-config config-file]
   (let [{old-etag :etag} current-config
@@ -118,7 +107,7 @@
 (defn- update-specific-config [current-config downstream-key upstream-key selector value]
   (let [{new-etag :etag
          new-upstream-config :config} (get current-config upstream-key)
-         
+
          {old-etag :upstream-etag
           old-selector-value :selector-value
           :as current-downstream-config} (get current-config downstream-key)]
@@ -141,9 +130,8 @@
   (let [{old-public-etag :public-etag
          :as current-config} (get configs dest-key)
 
-         {new-public-etag :etag} (get configs src-key)
-
-         private-file (get-in configs [src-key :config :nomad/private-file])]
+        {new-public-etag :etag} (get configs src-key)
+        private-file (get-in configs [src-key :config :nomad/private-file])]
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
@@ -174,12 +162,24 @@
       (update-private-config :host :host-private)
       (update-private-config :instance :instance-private)))
 
-(defn- get-current-config [config-ref]
-  (dosync
-   (-> (alter config-ref update-config)
-       merge-configs)))
+;; ---------- PUBLIC API ----------
+
+(defn read-config [file-or-resource & [{:keys [cached-config]}]]
+  (let [config-map (or (meta cached-config)
+                       {:general {:config-file file-or-resource}})
+        updated-config (update-config config-map)]
+    (merge-configs updated-config)))
+
+(defmacro with-location-override [override-map & body]
+  `(with-redefs [~@(mapcat (fn [[override-sym override-value]]
+                             [(symbol (str "nomad/get-" (name override-sym))) `(constantly ~override-value)])
+                           override-map)]
+     ~@body))
 
 (defmacro defconfig [name file-or-resource]
-  `(let [config-ref# (ref {:general {:config-file ~file-or-resource}})]
+  `(let [!cached-config# (atom nil)]
      (defn ~name []
-       (#'get-current-config config-ref#))))
+       (swap! !cached-config#
+              (fn [cached-config#]
+                (read-config ~file-or-resource
+                             {:cached-config cached-config#}))))))

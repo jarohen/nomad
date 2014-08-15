@@ -1,19 +1,45 @@
 * Changelog
-** 0.6.3
+
+** 0.7.x
+
+*** 0.7.0
+
+Thanks to [[https://github.com/dparis][Dylan Paris]] for his work on this release :)
+
+Big refactoring, adding =read-config= function. No need to have a
+=defconfig= if you only want to read the config once and don't want to
+create a var.
+
+*Breaking change*: Nomad versions later than 0.7.0 are not compatible
+with Frodo versions earlier than 0.4.0 - please update your Frodo
+dependency accordingly.
+
+** 0.6.x
+
+*** 0.6.5 (stable not released)
+
+0.6.5-rc{1,2} were released in preparation for 0.7.0 - see above.
+
+*** 0.6.4
+
+No breaking changes - can now set the Nomad environment by setting the
+nomad.env Java system property
+
+*** 0.6.3
 
 No breaking changes, changing =#nomad/edn-env-var= to return =nil=
 rather than throwing an ugly exception on missing environment
 variables.
 
-** 0.6.2
+*** 0.6.2
 
 No breaking changes, adding =#nomad/edn-env-var= reader macro.
 
-** 0.6.1
+*** 0.6.1
 
 No breaking changes, adding =with-location-override=
 
-** 0.6.0
+*** 0.6.0
 
 Breaking change - environment config now takes preference over host
 config. Seems that, if an environment is explicitly specified, the
@@ -25,17 +51,20 @@ an environment variable.
 Thanks to [[https://github.com/oholworthy][Oliver Holworthy]] for
 these suggestions!
 
-** 0.5.1
+** 0.5.x
+
+*** 0.5.1
 
 More helpful error message when a snippet can't be found. No breaking
 changes.
 
-** 0.5.0
+*** 0.5.0
 
 Minor breaking change - removing the whole =:nomad/environments= map
 from the full resulting configuration, in line with =:nomad/hosts=
 
-** 0.4.1
+** 0.4.x
+*** 0.4.1
 
 Adding in concept of 'environments'
 
@@ -43,13 +72,14 @@ Minor breaking change - in the config meta-information, =:environment=
 now points to the current environment's config, and the old
 =:environment= key can now be found under =:location=
 
-** 0.3.3
+** 0.3.x
+*** 0.3.3
 
 Handling gracefully when any of the configuration files don't exist.
 
 No breaking changes.
 
-** 0.3.2
+*** 0.3.2
 
 Allowed private config in the general section, for private files in a
 known, common location.
@@ -58,14 +88,14 @@ No breaking changes.
 
 Thanks Michael Jakl!
 
-** 0.3.1
+*** 0.3.1
 
 Introduced 'snippets' using the =:nomad/snippets= key and the
 =#nomad/snippet= reader macro.
 
 No breaking changes.
 
-** 0.3.0
+*** 0.3.0
 
 0.3.0 introduces a rather large breaking change: in the outputted
 configuration map, rather than lots of :nomad/* keys, all of the
@@ -83,7 +113,8 @@ and
 
 unless you have conflicting key names in your general configuration.
 
-** 0.2.1
+** 0.2.x
+*** 0.2.1
 
 Mainly the addition of the private configuration - no breaking changes.
 
@@ -95,7 +126,7 @@ Mainly the addition of the private configuration - no breaking changes.
   =:nomad/current-host= and =:nomad/current-instance= maps
   respectively.
 
-** 0.2.0
+*** 0.2.0
 
 0.2.0 has introduced a couple of breaking changes:
 

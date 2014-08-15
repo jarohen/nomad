@@ -21,19 +21,13 @@ separate dependency!
 Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
-  ;; stable
-  [jarohen/nomad "0.6.4"]
-  
-  ;; bug-fixes only
-  [jarohen/nomad "0.5.1"]
+  [jarohen/nomad "0.7.0"]
 #+END_SRC
 
-0.6. has one breaking change - environment configuration is now given
-preference to host config. The reasoning for this is that, if a
-developer specifies an environment, it is probably because he intends
-to either use or test out that particular environment configuration.
+Nomad 0.7.0 and later are no longer compatible with Frodo earlier than
+0.4.0, please update your Frodo version to 0.4.0 or later.
 
-Please see 'Changes', below.
+Please see the Changelog for more details.
 
 *** 'Hello world!'
 
