@@ -11,7 +11,7 @@ Big refactoring, adding =read-config= function. No need to have a
 create a var.
 
 *Breaking change*: Nomad versions later than 0.7.0 are not compatible
-with Frodo versions earlier than 0.4.0 - please update your Frodo
+with Frodo versions earlier than 0.4.1 - please update your Frodo
 dependency accordingly.
 
 ** 0.6.x
