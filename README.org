@@ -305,8 +305,8 @@ instance config, pointing to a file on the local file system:
    {"my-host"
     ;; Using the '#nomad/file' reader macro
     {:nomad/private-file #nomad/file "/home/me/.my-app/secret-config.edn"
-     {:database {:username "my-user"
-                 :password :will-be-overridden}}}}}
+     :database {:username "my-user"
+                :password :will-be-overridden}}}}
 #+END_SRC
 
 =/home/me/.my-app/secret-config.edn=
