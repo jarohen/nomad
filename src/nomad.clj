@@ -76,24 +76,25 @@
   (postwalk-replace {:nomad/nil nil} m))
 
 (defn- readers-without-snippets []
-  {:readers (nomad-data-readers (constantly ::snippet))})
+  (nomad-data-readers (constantly ::snippet)))
 
 (defn- readers-with-snippets [snippets]
-  {:readers (nomad-data-readers
-             (fn [ks]
-               (or
-                (get-in snippets ks)
-                (throw (ex-info "No snippet found for keys" {:keys ks})))))})
+  (nomad-data-readers
+   (fn [ks]
+     (or
+      (get-in snippets ks)
+      (throw (ex-info "No snippet found for keys" {:keys ks}))))))
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
-        without-snippets (edn/read-string (readers-without-snippets) config-str)
+        without-snippets (edn/read-string {:readers (merge (readers-without-snippets) *data-readers*)}
+                                          config-str)
         snippets (get without-snippets :nomad/snippets)
-        with-snippets (-> (edn/read-string (readers-with-snippets snippets)
+        with-snippets (-> (edn/read-string {:readers (merge (readers-with-snippets snippets) *data-readers*)}
                                            config-str)
                           (dissoc :nomad/snippets)
                           replace-nomad-nils)]
-    {:etag  (etag config-file)
+    {:etag (etag config-file)
      :config-file config-file
      :config  with-snippets}))
 
@@ -130,8 +131,8 @@
   (let [{old-public-etag :public-etag
          :as current-config} (get configs dest-key)
 
-        {new-public-etag :etag} (get configs src-key)
-        private-file (get-in configs [src-key :config :nomad/private-file])]
+         {new-public-etag :etag} (get configs src-key)
+         private-file (get-in configs [src-key :config :nomad/private-file])]
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
@@ -176,10 +177,11 @@
                            override-map)]
      ~@body))
 
-(defmacro defconfig [name file-or-resource]
+(defmacro defconfig [name file-or-resource & [{:keys [data-readers]}]]
   `(let [!cached-config# (atom nil)]
      (defn ~name []
        (swap! !cached-config#
               (fn [cached-config#]
-                (read-config ~file-or-resource
-                             {:cached-config cached-config#}))))))
+                (binding [*data-readers* (merge *data-readers* data-readers)]
+                  (read-config ~file-or-resource
+                               {:cached-config cached-config#})))))))

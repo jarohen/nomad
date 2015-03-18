@@ -188,7 +188,7 @@
                             :host-private
                             {:config {:private-key :yes-indeed}
                              :etag "same-private-etag"}}))]
-    
+
     (test/is (= :yes-indeed (get-in returned-config [:host-private :config :private-key])))))
 
 (deftest dereferences-snippet
@@ -201,7 +201,7 @@
         returned-config (with-hostname "my-host"
                           (#'nomad/update-config
                            {:general {:config-file dummy-config-file}}))]
-    
+
     (test/is (= "dev-database" (get-in returned-config [:host :config :database :host])))))
 
 (deftest reflects-overrides
@@ -220,19 +220,19 @@
                  {:nomad/instances
                   {"override-instance"
                    {:test-key-2 "test-value-2-override"}}}}}
-        
+
         dummy-config-file (DummyConfigFile. (constantly ::etag)
                                             (constantly (pr-str config)))
-        
+
         default-config (with-hostname "default-host"
                          (with-environment :default
                            (read-config dummy-config-file)))
-        
+
         override-config (nomad/with-location-override {:environment "override-env"
                                                        :hostname    "override-host"
                                                        :instance    "override-instance"}
                           (read-config dummy-config-file))
-        
+
         expected-default {:nomad/instance    :default
                           :nomad/hostname    "default-host"
                           :nomad/environment :default
@@ -247,6 +247,15 @@
 
     (test/is (= default-config expected-default))
     (test/is (= override-config expected-override))))
+
+(deftest uses-data-readers
+  (binding [*data-readers* (assoc *data-readers*
+                             'nomad-test/file-reader #(apply io/file %))]
+    (test/is (= "/tmp/test.txt"
+                (-> (read-config (map->DummyConfigFile {:_etag (constantly ::etag)
+                                                        :_content (constantly "{:file #nomad-test/file-reader [\"/tmp/test.txt\"]}")}))
+                    :file
+                    .getPath)))))
 
 (comment
   ;; This bit is for some manual integration testing
