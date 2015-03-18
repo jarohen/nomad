@@ -52,25 +52,35 @@
 
 (defn- read-edn-env-var [env-var]
   (let [val-str (System/getenv env-var)]
-    (or
-     (try
-       (edn/read-string val-str)
-       (catch Throwable e
-         (throw (ex-info "Can't read-string edn-env-var:"
-                         {:env-var env-var
-                          :val-str val-str}))))
+    ))
 
-     ;; This does return :nomad/nil when the env-var is literal
-     ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
-     ;; until tools.reader accepts nil as a return value from a
-     ;; reader macro fn
-     :nomad/nil)))
+(defn read-env-var [var-key]
+  (or (System/getenv var-key) :nomad/nil))
+
+(defn read-jvm-prop [prop-key]
+  (or (System/getProperty prop-key) :nomad/nil))
+
+(defn parse-edn [s]
+  (or
+   (try
+     (edn/read-string s)
+     (catch Throwable e
+       (throw (ex-info "Can't parse EDN:"
+                       {:val-str s}))))
+
+   ;; This does return :nomad/nil when the env-var/JVM prop is literal
+   ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
+   ;; until tools.reader accepts nil as a return value from a
+   ;; reader macro fn
+   :nomad/nil))
 
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(or (System/getenv %) :nomad/nil)
-   'nomad/edn-env-var read-edn-env-var})
+   'nomad/env-var read-env-var
+   'nomad/edn-env-var (comp parse-edn read-env-var)
+   'nomad/jvm-prop read-jvm-prop
+   'nomad/edn-jvm-prop (comp parse-edn read-jvm-prop)})
 
 (defn- replace-nomad-nils [m]
   (postwalk-replace {:nomad/nil nil} m))

@@ -257,6 +257,14 @@
                     :file
                     .getPath)))))
 
+(deftest reads-jvm-prop
+  (System/setProperty "nomad-test-property" (pr-str {:a 1 :b 2}))
+
+  (test/is (= (System/getProperty "user.name")
+              (:username (read-config "{:username #nomad/jvm-prop \"user.name\"}"))))
+  (test/is (= {:a 1 :b 2}
+              (:username (read-config "{:username #nomad/edn-jvm-prop \"nomad-test-property\"}")))))
+
 (comment
   ;; This bit is for some manual integration testing
 
