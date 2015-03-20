@@ -50,10 +50,6 @@
       (get (System/getenv) "NOMAD_ENV")
       :default))
 
-(defn- read-edn-env-var [env-var]
-  (let [val-str (System/getenv env-var)]
-    ))
-
 (defn read-env-var [var-key]
   (or (System/getenv var-key) :nomad/nil))
 
@@ -192,6 +188,6 @@
      (defn ~name []
        (swap! !cached-config#
               (fn [cached-config#]
-                (binding [*data-readers* (merge *data-readers* data-readers)]
+                (binding [*data-readers* (merge *data-readers* ~data-readers)]
                   (read-config ~file-or-resource
                                {:cached-config cached-config#})))))))
