@@ -127,6 +127,14 @@
                                                     (constantly (pr-str {})))}}))]
     (test/is (= "dummy-instance" (get-in returned-config [:location :nomad/instance])))))
 
+(deftest loads-default-env-vars
+  (let [{:keys [etag config]}
+        (#'nomad/update-config-file {}
+                                    (DummyConfigFile.
+                                     (constantly :etag)
+                                     (constantly "{:test #nomad/env-var [\"NOPE\" :default]}")))]
+    (test/is (= :default (:test config)))))
+
 (defrecord DummyPrivateFile [etag* content*]
   nomad/ConfigFile
   (etag [_] etag*)
