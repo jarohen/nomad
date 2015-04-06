@@ -66,10 +66,16 @@
      ;; reader macro fn
      :nomad/nil)))
 
+(defn read-env-var [config]
+  (let [[env-var default] (if (vector? config)
+                            config
+                            [config :nomad/nil])]
+    (or (System/getenv env-var) default)))
+
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(or (System/getenv %) :nomad/nil)
+   'nomad/env-var read-env-var
    'nomad/edn-env-var read-edn-env-var})
 
 (defn- replace-nomad-nils [m]
