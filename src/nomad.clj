@@ -50,26 +50,37 @@
       (get (System/getenv) "NOMAD_ENV")
       :default))
 
-(defn- read-edn-env-var [env-var]
-  (let [val-str (System/getenv env-var)]
+(defn- extract-config [config]
+  (if (vector? config)
+    config
+    ;; This does return :nomad/nil when the env-var is literal
+    ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
+    ;; until tools.reader accepts nil as a return value from a
+    ;; reader macro fn
+    [config :nomad/nil]))
+
+(defn- read-env-var [config]
+  (let [[env-var default] (extract-config config)]
+    (or (System/getenv env-var) default)))
+
+(defn- read-edn-env-var [config]
+  (let [[env-var default] (extract-config config)
+        val-str (System/getenv env-var)]
     (or
      (try
        (edn/read-string val-str)
        (catch Throwable e
          (throw (ex-info "Can't read-string edn-env-var:"
-                         {:env-var env-var
+                         {:env-var (config 0)
+                          :default (config 1)
                           :val-str val-str}))))
 
-     ;; This does return :nomad/nil when the env-var is literal
-     ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
-     ;; until tools.reader accepts nil as a return value from a
-     ;; reader macro fn
-     :nomad/nil)))
+     default)))
 
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(or (System/getenv %) :nomad/nil)
+   'nomad/env-var read-env-var
    'nomad/edn-env-var read-edn-env-var})
 
 (defn- replace-nomad-nils [m]

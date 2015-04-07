@@ -394,6 +394,39 @@ Reading the port from the config:
   ;; -> java.lang.Long
 #+END_SRC
 
+**** With defaults
+
+Both the =#nomad/env-var= and =#nomad/edn-env-var= reader macros also
+support a vector, of the form =["PORT" 3000]=. If the environment
+variable named by the first element of the vector is not present, the
+second element of the vector will be used as a default.
+
+In config:
+
+#+BEGIN_SRC clojure
+  {:port #nomad/edn-env-var ["PORT" 3000]}
+#+END_SRC
+
+When the =PORT= environment variable is unset
+
+#+BEGIN_SRC clojure
+  (defconfig config (...))
+  
+  (:port (config)) 
+  ;; -> 3000
+#+END_SRC
+
+When it's set:
+
+#+BEGIN_SRC sh
+  PORT=5000 lein repl
+#+END_SRC
+
+#+BEGIN_SRC clojure
+  (:port (config))
+  ;; -> 5000
+#+END_SRC
+
 ** Order of preference
 
 Nomad now merges all of your public/private/host/instance
