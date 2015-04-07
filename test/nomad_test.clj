@@ -135,6 +135,14 @@
                                      (constantly "{:test #nomad/env-var [\"NOPE\" :default]}")))]
     (test/is (= :default (:test config)))))
 
+(deftest loads-default-edn-env-vars
+  (let [{:keys [etag config]}
+        (#'nomad/update-config-file {}
+                                    (DummyConfigFile.
+                                     (constantly :etag)
+                                     (constantly "{:test #nomad/edn-env-var [\"NOPE\" :default]}")))]
+    (test/is (= :default (:test config)))))
+
 (defrecord DummyPrivateFile [etag* content*]
   nomad/ConfigFile
   (etag [_] etag*)
