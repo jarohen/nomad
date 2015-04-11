@@ -1,6 +1,17 @@
 * Changelog
 
 ** 0.7.x
+*** 0.7.1
+
+Configuration can now be pulled from JVM properties - thanks to [[https://github.com/rosejn][Jeff
+Rose]] for the suggestion!
+
+Nomad now takes the =*data-readers*= variable into account - thanks to
+[[https://github.com/lloydshark][@lloydshark]] for the suggestion!
+
+Configuration pulled from environment variables or JVM properties can
+also now take a default - thanks to [[https://github.com/glittershark][Griffin Smith]] for the suggestion
+and PR!
 
 *** 0.7.1
 
