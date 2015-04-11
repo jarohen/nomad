@@ -278,8 +278,12 @@
 
   (test/is (= (System/getProperty "user.name")
               (:username (read-config "{:username #nomad/jvm-prop \"user.name\"}"))))
+  (test/is (= (System/getProperty "user.name")
+              (:username (read-config "{:username #nomad/jvm-prop [\"user.name\" \"this-is-the-default\"]}"))))
   (test/is (= {:a 1 :b 2}
-              (:username (read-config "{:username #nomad/edn-jvm-prop \"nomad-test-property\"}")))))
+              (:username (read-config "{:username #nomad/edn-jvm-prop \"nomad-test-property\"}"))))
+  (test/is (= "this-is-the-default"
+              (:username (read-config "{:username #nomad/edn-jvm-prop [\"unknown-property\" \"this-is-the-default\"]}")))))
 
 (comment
   ;; This bit is for some manual integration testing
