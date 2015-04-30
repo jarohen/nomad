@@ -21,7 +21,7 @@ separate dependency!
 Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
-  [jarohen/nomad "0.7.0"]
+  [jarohen/nomad "0.7.1"]
 #+END_SRC
 
 Nomad 0.7.0 and later are no longer compatible with Frodo earlier than
@@ -50,9 +50,9 @@ my_ns.clj:
   (ns my-ns
     (:require [nomad :refer [defconfig]]
               [clojure.java.io :as io]))
-  
+
   (defconfig my-config (io/resource "config/my-config.edn"))
-  
+
   (my-config)
   ;; -> {:my-key "my-value"}
 #+END_SRC
@@ -77,11 +77,11 @@ Nomad will then merge the configuration of the current host into the
 returned map:
 
 #+BEGIN_SRC clojure
-  
+
   (get-in (my-config) [:key1])
   ;; On "my-laptop", will return "dev-value"
   ;; On "my-web-server", will return "prod-value"
-  
+
   ;; Previously (0.2.x), you would have to have done:
   ;; (get-in (my-config) [:nomad/current-host :key1])
 #+END_SRC
@@ -116,7 +116,7 @@ map:
 #+BEGIN_SRC clojure
   (let [{:keys [data-directory]} (my-config)]
     (slurp (io/file data-directory "data-file.edn")))
-  
+
   ;; will slurp "/home/me/.dev2/data-file.edn
 #+END_SRC
 
@@ -173,14 +173,14 @@ environment) by wrapping your test with
 
 #+BEGIN_SRC clojure
   (defconfig my-config (...))
-  
+
   (:send-emails? (my-config))
-  
+
   ;; => false
-  
+
   (nomad/with-location-override {:environment "prod"}
     (:send-emails? (my-config)))
-  
+
   ;; => true
 #+END_SRC
 
@@ -206,9 +206,9 @@ my_ns.clj:
   (ns my-ns
     (:require [nomad :refer [defconfig]
                [clojure.java.io :as io]]))
-  
+
   (defconfig my-config (io/resource "config/my-config.edn"))
-  
+
   (type (:data-directory (my-config)))
   ;; -> java.io.File
 #+END_SRC
@@ -276,9 +276,9 @@ return your configuration map, but with the snippet dereferenced:
   (ns my-ns
     (:require [nomad :refer [defconfig]
                [clojure.java.io :as io]]))
-  
+
   (defconfig my-config (io/resource "config/my-config.edn"))
-  
+
   (my-config)
   ;; on "my-host"
   ;; -> {:database {:host "dev-host"
@@ -326,9 +326,9 @@ configuration, as follows:
   (ns my-ns
     (:require [nomad :refer [defconfig]
                [clojure.java.io :as io]]))
-  
+
   (defconfig my-config (io/resource "config/my-config.edn"))
-  
+
   (get-in (my-config) [:database])
   ;; -> {:username "my-user", :password "password123"}
 #+END_SRC
@@ -358,7 +358,7 @@ Reading the password from the config:
 
 #+BEGIN_SRC clojure
   (defconfig config (...))
-  
+
   (:db-password (config))
   ;; -> "password-123"
 #+END_SRC
@@ -386,10 +386,10 @@ Reading the port from the config:
 
 #+BEGIN_SRC clojure
   (defconfig config (...))
-  
+
   (:port (config))
   ;; -> 3000
-  
+
   (type (:port (config)))
   ;; -> java.lang.Long
 #+END_SRC
@@ -418,9 +418,9 @@ meta-information on the returned config:
   (ns my-ns
     (:require [nomad :refer [defconfig]
                [clojure.java.io :as io]]))
-  
+
   (defconfig my-config (io/resource "config/my-config.edn"))
-  
+
   (meta (my-config))
   ;; -> {:general {:config ...}
   ;;     :general-private {:config ...}

@@ -2,6 +2,19 @@
 
 ** 0.7.x
 
+*** 0.7.1
+
+No breaking changes.
+
+Introduced a JVM property reader macro, thanks to [[https://github.com/rosejn][Jeff Rose]] for the
+suggestion!
+
+Introduced default values for config pulled from environment
+variables, thanks to [[https://github.com/glittershark][Griffin Smith]] for the PR!
+
+You can now supply your own data-readers to =read-config= - thanks to
+[[https://github.com/lloydshark][@lloydshark]] for the suggestion!
+
 *** 0.7.0
 
 Thanks to [[https://github.com/dparis][Dylan Paris]] for his work on this release :)
