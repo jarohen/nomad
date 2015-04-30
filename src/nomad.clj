@@ -50,50 +50,57 @@
       (get (System/getenv) "NOMAD_ENV")
       :default))
 
-(defn- read-edn-env-var [env-var]
-  (let [val-str (System/getenv env-var)]
-    (or
-     (try
-       (edn/read-string val-str)
-       (catch Throwable e
-         (throw (ex-info "Can't read-string edn-env-var:"
-                         {:env-var env-var
-                          :val-str val-str}))))
+(defn read-env-var [var-key]
+  (or (System/getenv var-key) :nomad/nil))
 
-     ;; This does return :nomad/nil when the env-var is literal
-     ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
-     ;; until tools.reader accepts nil as a return value from a
-     ;; reader macro fn
-     :nomad/nil)))
+(defn read-jvm-prop [prop-key]
+  (or (System/getProperty prop-key) :nomad/nil))
+
+(defn parse-edn [s]
+  (or
+   (try
+     (edn/read-string s)
+     (catch Throwable e
+       (throw (ex-info "Can't parse EDN:"
+                       {:val-str s}))))
+
+   ;; This does return :nomad/nil when the env-var/JVM prop is literal
+   ;; nil (i.e. VAR=nil lein repl) but not sure I can fix this
+   ;; until tools.reader accepts nil as a return value from a
+   ;; reader macro fn
+   :nomad/nil))
 
 (defn- nomad-data-readers [snippet-reader]
   {'nomad/file io/file
    'nomad/snippet snippet-reader
-   'nomad/env-var #(or (System/getenv %) :nomad/nil)
-   'nomad/edn-env-var read-edn-env-var})
+   'nomad/env-var read-env-var
+   'nomad/edn-env-var (comp parse-edn read-env-var)
+   'nomad/jvm-prop read-jvm-prop
+   'nomad/edn-jvm-prop (comp parse-edn read-jvm-prop)})
 
 (defn- replace-nomad-nils [m]
   (postwalk-replace {:nomad/nil nil} m))
 
 (defn- readers-without-snippets []
-  {:readers (nomad-data-readers (constantly ::snippet))})
+  (nomad-data-readers (constantly ::snippet)))
 
 (defn- readers-with-snippets [snippets]
-  {:readers (nomad-data-readers
-             (fn [ks]
-               (or
-                (get-in snippets ks)
-                (throw (ex-info "No snippet found for keys" {:keys ks})))))})
+  (nomad-data-readers
+   (fn [ks]
+     (or
+      (get-in snippets ks)
+      (throw (ex-info "No snippet found for keys" {:keys ks}))))))
 
 (defn- reload-config-file [config-file]
   (let [config-str (slurp* config-file)
-        without-snippets (edn/read-string (readers-without-snippets) config-str)
+        without-snippets (edn/read-string {:readers (merge (readers-without-snippets) *data-readers*)}
+                                          config-str)
         snippets (get without-snippets :nomad/snippets)
-        with-snippets (-> (edn/read-string (readers-with-snippets snippets)
+        with-snippets (-> (edn/read-string {:readers (merge (readers-with-snippets snippets) *data-readers*)}
                                            config-str)
                           (dissoc :nomad/snippets)
                           replace-nomad-nils)]
-    {:etag  (etag config-file)
+    {:etag (etag config-file)
      :config-file config-file
      :config  with-snippets}))
 
@@ -130,8 +137,8 @@
   (let [{old-public-etag :public-etag
          :as current-config} (get configs dest-key)
 
-        {new-public-etag :etag} (get configs src-key)
-        private-file (get-in configs [src-key :config :nomad/private-file])]
+         {new-public-etag :etag} (get configs src-key)
+         private-file (get-in configs [src-key :config :nomad/private-file])]
     (assoc configs
       dest-key (if (not= old-public-etag new-public-etag)
                  (reload-config-file private-file)
@@ -176,10 +183,11 @@
                            override-map)]
      ~@body))
 
-(defmacro defconfig [name file-or-resource]
+(defmacro defconfig [name file-or-resource & [{:keys [data-readers]}]]
   `(let [!cached-config# (atom nil)]
      (defn ~name []
        (swap! !cached-config#
               (fn [cached-config#]
-                (read-config ~file-or-resource
-                             {:cached-config cached-config#}))))))
+                (binding [*data-readers* (merge *data-readers* ~data-readers)]
+                  (read-config ~file-or-resource
+                               {:cached-config cached-config#})))))))
