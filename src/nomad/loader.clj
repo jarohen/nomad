@@ -22,7 +22,7 @@
 (defn load-config-source [config-source location]
   (some-> (try-slurp config-source)
           parse-config
-          (l/select-location location)))
+          (l/select-location (merge (l/get-location) location))))
 
 (defn includes [config]
   (->> config
