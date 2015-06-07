@@ -13,12 +13,16 @@
   `(binding [*location-override* ~override-map]
      ~@body))
 
-(defmacro defconfig [name file-or-resource & [{:keys [data-readers]}]]
-  `(let [!cached-config# (atom nil)]
-     (defn ~name []
-       (swap! !cached-config#
-              (fn [cached-config#]
-                (binding [*data-readers* (merge *data-readers* data-readers)]
-                  (read-config ~file-or-resource
-                               {:cached-config cached-config#
-                                :location *location-override*})))))))
+(defn make-config-cache [file-or-resource {:keys [data-readers]}]
+  (let [!cached-config (atom nil)]
+    (fn []
+      (swap! !cached-config
+             (fn [cached-config]
+               (binding [*data-readers* (merge *data-readers* data-readers)]
+                 (read-config file-or-resource
+                              {:cached-config cached-config
+                               :location *location-override*})))))))
+
+(defmacro defconfig [name file-or-resource & [{:keys [data-readers] :as opts}]]
+  `(def ~name
+     (make-config-cache ~file-or-resource ~opts)))
