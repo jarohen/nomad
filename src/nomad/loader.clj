@@ -60,10 +60,10 @@
                                            (remove #{::invalid-include})))
 
                  (conj loaded-sources config-source)
-                 (conj configs (-> new-config
-                                   (vary-meta assoc
-                                              ::config-source config-source
-                                              ::etag (config-source-etag config-source))))))))))
+                 (conj configs (some-> new-config
+                                       (vary-meta assoc
+                                                  ::config-source config-source
+                                                  ::etag (config-source-etag config-source))))))))))
 
 (defn with-cached-config-if-unchanged [{:keys [config-source location cached-config]} merge-config]
   (let [{old-location ::location, old-initial-source ::initial-source, old-etags ::etags} (meta cached-config)]
