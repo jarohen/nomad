@@ -4,12 +4,11 @@
 
                "my-host"
                {:host-config :my-host-value
-                :nomad/private-file #nomad/file "test/private.edn"
+                :nomad/includes [#nomad/file "test/private.edn"]
                 :nomad/instances {"test-instance"
-                                  {:nomad/private-file #nomad/file "test/private-instance.edn"
+                                  {:nomad/includes [#nomad/file "test/private-instance.edn"]
                                    :instance-key :instance-val
-                                   :database {:username "my-user"
-                                              :password :secret}}
-                                     
+                                   :database {:username "my-user"}}
+
                                   "env-var-test"
-                                  {:user-env-var #nomad/edn-env-var "TEST"}}}}}
+                                  {:user-env-var #nomad/edn-env-var ["TEST" "\"blah\""]}}}}}
