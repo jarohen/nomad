@@ -25,16 +25,18 @@
 
    :user (System/getProperty "user.name")})
 
-(sc/defn select-location [config {:keys [environment host user instance] :as location} :- Location]
-  {:general (dissoc config :nomad/environments :nomad/hosts)
+(sc/defn select-location [config {:keys [environment host user instance] :as location} :- (sc/maybe Location)]
+  (let [location (merge location
+                        (get-location))]
+    {:general (dissoc config :nomad/environments :nomad/hosts)
 
-   :host (-> (get-in config [:nomad/hosts (or host :default)])
-             (dissoc :nomad/users :nomad/instances))
+     :host (-> (get-in config [:nomad/hosts (or host :default)])
+               (dissoc :nomad/users :nomad/instances))
 
-   :instance (get-in config [:nomad/hosts (or host :default)
-                             :nomad/instances (or instance :default)])
+     :instance (get-in config [:nomad/hosts (or host :default)
+                               :nomad/instances (or instance :default)])
 
-   :user (get-in config [:nomad/hosts (or host :default)
-                         :nomad/users (or user :default)])
+     :user (get-in config [:nomad/hosts (or host :default)
+                           :nomad/users (or user :default)])
 
-   :environment (get-in config [:nomad/environments (or environment :default)])})
+     :environment (get-in config [:nomad/environments (or environment :default)])}))
