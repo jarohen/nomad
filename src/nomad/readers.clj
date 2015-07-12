@@ -1,5 +1,6 @@
 (ns nomad.readers
-  (:require [nomad.references :refer [ResolvableReference]]
+  (:require [nomad.references :refer [resolve-references ResolvableReference]]
+            [nomad.merge :refer [deep-merge]]
             [nomad.secret :as ns]
             [camel-snake-kebab.core :as csk]
             [clojure.java.io :as io]
@@ -62,7 +63,7 @@
                                                                      :value env-value})))))))
 (defn secret-reader [[secret-key-name cypher-text]]
   (reify ResolvableReference
-    (resolve-value [_ {:keys [:nomad/secret-keys]}]
+    (resolve-value [_ {:keys [:nomad/secret-keys] :as config}]
       (let [secret-key (get secret-keys secret-key-name)]
         (assert secret-key (format "Nomad: can't find secret key '%s'" secret-key-name))
 
@@ -70,5 +71,27 @@
 
 (defn snippet-reader [snippet-key]
   (reify ResolvableReference
-    (resolve-value [_ {:keys [:nomad/snippets]}]
+    (resolve-value [_ {:keys [:nomad/snippets] :as config}]
       (get snippets snippet-key))))
+
+(defrecord LocationReference [location-key config-map]
+  ResolvableReference
+  (resolve-value [_ config]
+    (deep-merge [(:default config-map)
+                 (get config-map (get-in (meta config) [:nomad/location location-key]))])))
+
+(defn by-environment-reader [env-map]
+  (map->LocationReference {:location-key :environment
+                           :config-map env-map}))
+
+(defn by-host-reader [env-map]
+  (map->LocationReference {:location-key :host
+                           :config-map env-map}))
+
+(defn by-host-instance-reader [env-map]
+  (map->LocationReference {:location-key :host-instance
+                           :config-map env-map}))
+
+(defn by-user-reader [env-map]
+  (map->LocationReference {:location-key :user
+                           :config-map env-map}))

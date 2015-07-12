@@ -1,5 +1,6 @@
 (ns nomad.loader
   (:require [nomad.location :as l]
+            [nomad.references :refer [resolve-references]]
             [nomad.merge :refer [deep-merge]]
             [nomad.references :as nr]
             [clojure.java.io :as io]
@@ -19,16 +20,6 @@
     (edn/read-string {:readers *data-readers*}
                      s)))
 
-(defn load-config-source [config-source location]
-  (some-> (try-slurp config-source)
-          parse-config
-          (l/select-location (merge (l/get-location) location))))
-
-(defn includes [config]
-  (->> config
-       ((juxt :general :host :user :environment :instance))
-       (mapcat :nomad/includes)))
-
 (defmulti config-source-etag type)
 
 (defmethod config-source-etag java.io.File [file]
@@ -42,7 +33,7 @@
     (catch Exception e
       e)))
 
-(defn load-config-sources [initial-source location]
+(defn load-config-sources [initial-source {:keys [location]}]
   (loop [[config-source & more-sources :as config-sources] [initial-source]
          loaded-sources #{}
          configs []]
@@ -54,10 +45,12 @@
       (if-not config-source
         (recur more-sources loaded-sources configs)
 
-        (let [new-config (load-config-source config-source location)]
-          (recur (concat more-sources (->> (includes new-config)
-                                           (remove #(contains? loaded-sources %))
-                                           (remove #{::invalid-include})))
+        (let [new-config (some-> (try-slurp config-source)
+                                 parse-config)]
+          (recur (concat more-sources (some-> (:nomad/includes new-config)
+                                              (resolve-references {:location location})
+                                              (->> (remove #(contains? loaded-sources %))
+                                                   (remove #{::invalid-include}))))
 
                  (conj loaded-sources config-source)
                  (conj configs (some-> new-config
@@ -74,7 +67,7 @@
       (do
         cached-config)
 
-      (let [new-sources (load-config-sources config-source location)]
+      (let [new-sources (load-config-sources config-source {:location location})]
         (with-meta (merge-config new-sources)
           {::initial-source config-source
            ::location location
@@ -85,7 +78,5 @@
     (fn merge-config [config-sources]
       (-> config-sources
           deep-merge
-          ((juxt :general :host :user :environment :instance))
-          deep-merge
           (dissoc :nomad/includes)
-          nr/resolve-references))))
+          (nr/resolve-references {:location location})))))

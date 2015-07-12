@@ -5,4 +5,8 @@
  nomad/jvm-prop nomad.readers/jvm-prop-reader
  nomad/edn-jvm-prop nomad.readers/edn-jvm-prop-reader
  nomad/secret nomad.readers/secret-reader
- nomad/snippet nomad.readers/snippet-reader}
+ nomad/snippet nomad.readers/snippet-reader
+ nomad/by-env nomad.readers/by-environment-reader
+ nomad/by-host nomad.readers/by-host-reader
+ nomad/by-host-instance nomad.readers/by-host-instance-reader
+ nomad/by-user nomad.readers/by-user-reader}
