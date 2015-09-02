@@ -394,6 +394,17 @@ Reading the port from the config:
   ;; -> java.lang.Long
 #+END_SRC
 
+**** Environment variable format strings
+
+=#nomad/env-format= takes a vector of data, the first item is a string passed to
+Clojure's =format= function. The rest of the items in the vector are names of
+environment variables that will be looked up and passed along with the format string
+to the =format= call.
+
+#+BEGIN_SRC clojure
+{:url #nomad/env-format ["http://%s:%s/api/1.0/" API_URL API_PORT]}
+#+END_SRC
+
 ** Order of preference
 
 Nomad now merges all of your public/private/host/instance

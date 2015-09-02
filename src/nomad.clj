@@ -53,6 +53,9 @@
 (defn read-env-var [var-key]
   (or (System/getenv var-key) :nomad/nil))
 
+(defn format-env-vars [[fmt & args]]
+  (apply format fmt (map #(System/getenv (str %)) args)))
+
 (defn read-jvm-prop [prop-key]
   (or (System/getProperty prop-key) :nomad/nil))
 
@@ -75,6 +78,7 @@
    'nomad/snippet snippet-reader
    'nomad/env-var read-env-var
    'nomad/edn-env-var (comp parse-edn read-env-var)
+   'nomad/env-format format-env-vars
    'nomad/jvm-prop read-jvm-prop
    'nomad/edn-jvm-prop (comp parse-edn read-jvm-prop)})
 
