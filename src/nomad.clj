@@ -78,7 +78,7 @@
    'nomad/snippet snippet-reader
    'nomad/env-var read-env-var
    'nomad/edn-env-var (comp parse-edn read-env-var)
-   'nomad/env-format format-env-vars
+   'nomad/envf format-env-vars
    'nomad/jvm-prop read-jvm-prop
    'nomad/edn-jvm-prop (comp parse-edn read-jvm-prop)})
 

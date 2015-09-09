@@ -15,5 +15,5 @@
                                   {:user-env-var #nomad/edn-env-var "TEST"}
 
                                   "format-env-vars-test"
-                                  {:url #nomad/env-format ["http://%s:%s/api/1.0/"
-                                                           API_URL API_PORT]}}}}}
+                                  {:url #nomad/envf ["http://%s:%s/api/1.0/"
+                                                     API_URL API_PORT]}}}}}
