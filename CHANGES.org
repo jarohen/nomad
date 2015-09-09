@@ -2,6 +2,12 @@
 
 ** 0.7.x
 
+*** 0.7.2
+
+No breaking changes.
+
+Addition of ~envf~ - thanks [[https://github.com/martintrojer][Martin]]!
+
 *** 0.7.1
 
 No breaking changes.
