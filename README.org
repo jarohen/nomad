@@ -21,7 +21,7 @@ separate dependency!
 Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
-  [jarohen/nomad "0.7.1"]
+  [jarohen/nomad "0.7.2"]
 #+END_SRC
 
 Nomad 0.7.0 and later are no longer compatible with Frodo earlier than
@@ -392,6 +392,17 @@ Reading the port from the config:
 
   (type (:port (config)))
   ;; -> java.lang.Long
+#+END_SRC
+
+**** Environment variable format strings
+
+=#nomad/envf= takes a vector of data, the first item is a string passed to
+Clojure's =format= function. The rest of the items in the vector are names of
+environment variables that will be looked up and passed along with the format string
+to the =format= call.
+
+#+BEGIN_SRC clojure
+{:url #nomad/envf ["http://%s:%s/api/1.0/" API_URL API_PORT]}
 #+END_SRC
 
 ** Order of preference

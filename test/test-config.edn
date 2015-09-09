@@ -10,6 +10,10 @@
                                    :instance-key :instance-val
                                    :database {:username "my-user"
                                               :password :secret}}
-                                     
+
                                   "env-var-test"
-                                  {:user-env-var #nomad/edn-env-var "TEST"}}}}}
+                                  {:user-env-var #nomad/edn-env-var "TEST"}
+
+                                  "format-env-vars-test"
+                                  {:url #nomad/envf ["http://%s:%s/api/1.0/"
+                                                     API_URL API_PORT]}}}}}

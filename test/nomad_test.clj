@@ -276,4 +276,8 @@
 
   (with-hostname "my-host"
     (with-instance "env-var-test"
+      (test-config)))
+
+  (with-hostname "my-host"
+    (with-instance "format-env-vars-test"
       (test-config))))
