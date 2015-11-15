@@ -250,9 +250,9 @@ of your configuration map:
   {:nomad/snippets
    {:databases
     {:dev {:host "dev-host"
-           :user "dev-user"}}
-    :prod {:host "prod-host"
-           :user "prod-user"}}}
+           :user "dev-user"}
+     :prod {:host "prod-host"
+            :user "prod-user"}}}}
 #+END_SRC
 
 You can then refer to them using the =#nomad/snippet= reader macro,
