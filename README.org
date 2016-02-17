@@ -169,7 +169,7 @@ both are set.
 You can test how Nomad will react in different locations (e.g. if you
 want to see how the system will behave when it is run in the ~prod~
 environment) by wrapping your test with
-=nomad/with-location-overrides=, as follows:
+=nomad/with-location-override=, as follows:
 
 #+BEGIN_SRC clojure
   (defconfig my-config (...))
