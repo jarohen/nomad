@@ -345,7 +345,12 @@ as environment variables.
 In config:
 
 #+BEGIN_SRC clojure
-  {:db-password #nomad/env-var "DB_PASSWORD"}
+  {:db-password #nomad/env-var ["DB_PASSWORD"]}
+#+END_SRC
+
+Default values can be provided as the second element in the vector:
+#+BEGIN_SRC clojure
+  {:host #nomad/env-var ["DB_PASSWORD" "default-value"]}
 #+END_SRC
 
 Starting up:
