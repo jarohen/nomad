@@ -1,9 +1,9 @@
 (ns nomad
   (:require [clojure.java.io :as io]
-            [clojure.java.shell :refer [sh]]
             [nomad.map :refer [deep-merge]]
             [clojure.tools.reader.edn :as edn]
-            [clojure.walk :refer [postwalk-replace]]))
+            [clojure.walk :refer [postwalk-replace]])
+  (:import [java.net InetAddress]))
 
 (defprotocol ConfigFile
   (etag [_])
@@ -40,7 +40,7 @@
   (slurp* [s] s))
 
 (defn- get-hostname []
-  (.trim (:out (sh "hostname"))))
+  (.. java.net.InetAddress getLocalHost getHostName))
 
 (defn- get-instance []
   (get (System/getenv) "NOMAD_INSTANCE" :default))
