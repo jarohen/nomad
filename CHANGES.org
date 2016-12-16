@@ -2,6 +2,14 @@
 
 ** 0.7.x
 
+*** 0.7.3
+
+Update get-hostname to use Java interop rather than shelling out - thanks [[https://github.com/nha][Nicolas Ha]]!
+
+Thanks also to [[https://github.com/ganmacs][Yuta Iwama]], for refactoring the deep-merge implementation, and
+[[https://github.com/sumbach][Sam Umbach]] for a doc fix
+
+
 *** 0.7.2
 
 No breaking changes.

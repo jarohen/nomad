@@ -21,7 +21,7 @@ separate dependency!
 Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
-  [jarohen/nomad "0.7.2"]
+  [jarohen/nomad "0.7.3"]
 #+END_SRC
 
 Nomad 0.7.0 and later are no longer compatible with Frodo earlier than
