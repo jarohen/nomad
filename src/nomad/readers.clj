@@ -37,7 +37,10 @@
       (handle-error))))
 
 (defn read-env-var [env-var default]
-  (-> (or (System/getenv (csk/->SCREAMING_SNAKE_CASE_STRING env-var)) default)))
+  (or (let [env-value (System/getenv (csk/->SCREAMING_SNAKE_CASE_STRING env-var))]
+        (when-not (s/blank? env-value)
+          env-value))
+      default))
 
 (defn env-var-reader [[env-var default]]
   (->NullableReference #(read-env-var env-var default)))
