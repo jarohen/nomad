@@ -80,7 +80,7 @@
            ::location location
            ::etags (::etags (meta new-sources))})))))
 
-(defn load-config [{:keys [config-source location cached-config] :as config-opts}]
+(defn load-config [{:keys [config-source location cached-config nomad/secret-keys] :as config-opts}]
   (with-cached-config-if-unchanged config-opts
     (fn merge-config [config-sources]
       (-> config-sources
@@ -88,4 +88,5 @@
           ((juxt :general :host :user :environment :instance))
           deep-merge
           (dissoc :nomad/includes)
+          (cond-> secret-keys (merge {:nomad/secret-keys secret-keys}))
           nr/resolve-references))))

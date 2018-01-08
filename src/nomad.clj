@@ -2,10 +2,11 @@
   (:require [nomad.loader :refer [load-config]]
             [nomad.readers]))
 
-(defn read-config [file-or-resource & [{:keys [cached-config location]}]]
+(defn read-config [file-or-resource & [{:keys [cached-config location nomad/secret-keys]}]]
   (load-config {:config-source file-or-resource
                 :location location
-                :cached-config cached-config}))
+                :cached-config cached-config
+                :nomad/secret-keys secret-keys}))
 
 (def ^:dynamic *location-override* {})
 
