@@ -93,3 +93,8 @@
    (-> config
        (apply-switches switches)
        (apply-secrets secret-keys))))
+
+(defn resolver [{:keys [switches secret-keys] :as opts}]
+  (-> (fn [config]
+        (resolve-config config opts))
+      memoize))
