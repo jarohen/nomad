@@ -22,6 +22,19 @@
             :overruled? true
             :uh-oh? nil})))
 
+(t/deftest applies-keyed-switches
+  (t/is (= (#'sut/apply-switches {:keyed-switch (sut/switch
+                                                  :live :not-this-one)}
+                                 #{:keyed/live})
+           {:keyed-switch nil}))
+
+  (t/is (= (#'sut/apply-switches {:keyed-switch (sut/switch
+                                                  :live :yeehah)
+                                  :nomad/key :keyed}
+                                 #{:keyed/live})
+
+           {:keyed-switch :yeehah})))
+
 (t/deftest resolves-secrets
   (let [secret-key (sut/generate-key)]
     (t/is (= (-> (sut/resolve-config {:db-config {:password (sut/->Secret :my-key (sut/encrypt "password123" secret-key))}}

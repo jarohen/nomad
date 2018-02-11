@@ -2,6 +2,7 @@
   (:require [buddy.core.codecs :as bc]
             [buddy.core.crypto :as b]
             [buddy.core.nonce :as bn]
+            [clojure.set :as set]
             [clojure.tools.reader.edn :as edn]
             [clojure.string :as s]
             [clojure.walk :as w]))
@@ -60,12 +61,19 @@
                [nil])))
        (with-meta {::switch? true})))
 
-(defn- apply-switches [{k :wiring/key, :as config} switches]
-  (w/postwalk (fn [v]
-                (if (::switch? (meta v))
-                  (v switches)
-                  v))
-              config))
+(defn- apply-switches [{k :nomad/key, :as config} switches]
+  (let [switches (set/union switches
+                            (when k
+                              (into #{}
+                                    (keep (fn [switch]
+                                            (when (= (name k) (namespace switch))
+                                              (keyword (name switch)))))
+                                    switches)))]
+    (w/postwalk (fn [v]
+                  (if (::switch? (meta v))
+                    (v switches)
+                    v))
+                (dissoc config :nomad/key))))
 
 (defn- parse-switch [switch]
   (if-let [[_ switch-ns switch-name] (re-matches #"(.+?)/(.+)" switch)]
