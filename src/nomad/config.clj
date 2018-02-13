@@ -102,9 +102,11 @@
       (some-> (s/split #","))
       (->> (into [] (map parse-switch)))))
 
-(defn set-default-opts! [{:keys [switches secret-keys]}]
+(defn set-default-switches! [switches]
   (when switches
-    (alter-var-root #'*switches* (constantly switches)))
+    (alter-var-root #'*switches* (constantly switches))))
 
+
+(defn set-default-secret-keys! [secret-keys]
   (when secret-keys
     (alter-var-root #'*secret-keys* (constantly secret-keys))))
