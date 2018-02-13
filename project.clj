@@ -1,4 +1,4 @@
-(defproject jarohen/nomad "0.9.0-alpha2"
+(defproject jarohen/nomad "0.9.0-alpha3"
   :description "A configuration library designed to allow Clojure applications to travel painlessly between different hosts and environments."
   :url "https://github.com/jarohen/nomad"
   :license {:name "Eclipse Public License"
