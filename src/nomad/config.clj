@@ -35,45 +35,61 @@
                   v))
               config))
 
-(comment
-  (let [foo-key (generate-key)]
-    (-> {:a 1 :b 2}
-        (encrypt foo-key)
-        (doto prn)
-        (decrypt foo-key))))
+(def ^:dynamic *secret-keys* {})
+
+(defn secret
+  ([key-id cipher-text]
+   (secret *secret-keys* key-id cipher-text))
+  ([secret-keys key-id cipher-text]
+   (if-let [secret-key (get secret-keys key-id)]
+     (decrypt cipher-text secret-key)
+     (throw (ex-info "missing secret-key" {:key-id key-id})))))
+
+(defmacro switch*
+  "Takes a set of switch/expr clauses, and an optional default value.
+  Returns the configuration from the first active switch, or the default if none are active, or nil.
+
+  (n/switch* #{:active :switches}
+    <switch> <expr>
+    <switch-2> <expr-2>
+    ...
+    <default-expr>)"
+  {:style/indent 1}
+  [switches & clauses]
+
+  `(condp #(contains? %2 %1) ~switches
+     ~@clauses
+     ~@(when (zero? (mod (count clauses) 2))
+         [nil])))
+
+(def ^:dynamic *switches* #{})
 
 (defmacro switch
   "Takes a set of switch/expr clauses, and an optional default value.
   Returns the configuration from the first active switch, or the default if none are active, or nil.
 
-  (w/switch
+  (n/switch
     <switch> <expr>
     <switch-2> <expr-2>
     ...
     <default-expr>)"
   {:style/indent 0}
   [& clauses]
+  `(switch* *switches* ~@clauses))
 
-  `(-> (fn [switches#]
-         (condp #(contains? %2 %1) switches#
-           ~@clauses
-           ~@(when (zero? (mod (count clauses) 2))
-               [nil])))
-       (with-meta {::switch? true})))
+(defn mk-config [f]
+  (-> (fn [{:keys [switches secret-keys]}]
+        (binding [*switches* switches
+                  *secret-keys* secret-keys]
+          (f)))
+      memoize))
 
-(defn- apply-switches [{k :nomad/key, :as config} switches]
-  (let [switches (set/union switches
-                            (when k
-                              (into #{}
-                                    (keep (fn [switch]
-                                            (when (= (name k) (namespace switch))
-                                              (keyword (name switch)))))
-                                    switches)))]
-    (w/postwalk (fn [v]
-                  (if (::switch? (meta v))
-                    (v switches)
-                    v))
-                (dissoc config :nomad/key))))
+(defmacro defconfig [name config]
+  `(def ~(-> name (with-meta {:arglists ''([] [{:keys [switches secret-keys]}])}))
+     (let [config# (mk-config (fn [] ~config))]
+       (fn
+         ([] (config# {:switches *switches*, :secret-keys *secret-keys*}))
+         ([opts#] (config# opts#))))))
 
 (defn- parse-switch [switch]
   (if-let [[_ switch-ns switch-name] (re-matches #"(.+?)/(.+)" switch)]
@@ -86,15 +102,9 @@
       (some-> (s/split #","))
       (->> (into [] (map parse-switch)))))
 
-(defn resolve-config
-  ([config] (resolve-config config {}))
+(defn set-default-opts! [{:keys [switches secret-keys]}]
+  (when switches
+    (alter-var-root #'*switches* (constantly switches)))
 
-  ([config {:keys [switches secret-keys], :or {switches env-switches}}]
-   (-> config
-       (apply-switches switches)
-       (apply-secrets secret-keys))))
-
-(defn resolver [{:keys [switches secret-keys] :as opts}]
-  (-> (fn [config]
-        (resolve-config config opts))
-      memoize))
+  (when secret-keys
+    (alter-var-root #'*secret-keys* (constantly secret-keys))))
