@@ -36,6 +36,8 @@
               config))
 
 (def ^:dynamic *secret-keys* {})
+(def ^:dynamic *switches* #{})
+(def !clients (atom #{}))
 
 (defn secret
   ([key-id cipher-text]
@@ -62,8 +64,6 @@
      ~@(when (zero? (mod (count clauses) 2))
          [nil])))
 
-(def ^:dynamic *switches* #{})
-
 (defmacro switch
   "Takes a set of switch/expr clauses, and an optional default value.
   Returns the configuration from the first active switch, or the default if none are active, or nil.
@@ -84,12 +84,17 @@
           (f)))
       memoize))
 
-(defmacro defconfig [name config]
-  `(def ~(-> name (with-meta {:arglists ''([] [{:keys [switches secret-keys]}])}))
-     (let [config# (mk-config (fn [] ~config))]
-       (fn
-         ([] (config# {:switches *switches*, :secret-keys *secret-keys*}))
-         ([opts#] (config# opts#))))))
+(defn add-client! [var]
+  (let [{var-ns :ns, var-name :name} (meta var)]
+    (swap! !clients conj (symbol (str var-ns) (name var-name)))))
+
+(defmacro defconfig [sym config]
+  `(let [config# (mk-config (fn [] ~config))]
+     (doto (def ~(-> sym (with-meta {:dynamic true}))
+             (config# {:switches *switches*
+                       :secret-keys *secret-keys*}))
+       (alter-meta! assoc :nomad/config config#)
+       add-client!)))
 
 (defn- parse-switch [switch]
   (if-let [[_ switch-ns switch-name] (re-matches #"(.+?)/(.+)" switch)]
@@ -102,11 +107,35 @@
       (some-> (s/split #","))
       (->> (into [] (map parse-switch)))))
 
-(defn set-default-switches! [switches]
-  (when switches
-    (alter-var-root #'*switches* (constantly switches))))
+(defn eval-config [config-var {:keys [switches secret-keys]}]
+  ((:nomad/config (meta config-var)) {:switches switches, :secret-keys secret-keys}))
 
+(defn set-defaults! [{:keys [switches secret-keys], :or {switches *switches*, secret-keys *secret-keys*}}]
+  (alter-var-root #'*switches* (constantly switches))
+  (alter-var-root #'*secret-keys* (constantly secret-keys))
 
-(defn set-default-secret-keys! [secret-keys]
-  (when secret-keys
-    (alter-var-root #'*secret-keys* (constantly secret-keys))))
+  (doseq [client @!clients]
+    (when-let [config-var (resolve client)]
+      (alter-var-root config-var (constantly (eval-config config-var {:switches switches, :secret-keys secret-keys}))))))
+
+(defn with-config-override* [{:keys [switches secret-keys], :or {switches *switches*, secret-keys *secret-keys*}} f]
+  (let [run (reduce (fn [f client]
+                      (fn []
+                        (if-let [config-var (resolve client)]
+                          (let [updated-config (eval-config config-var {:switches switches, :secret-keys secret-keys})]
+                            (try
+                              (push-thread-bindings {config-var updated-config})
+                              (f)
+                              (finally
+                                (pop-thread-bindings)))))))
+                    (fn []
+                      (f))
+                    @!clients)]
+    (binding [*switches* switches
+              *secret-keys* secret-keys]
+      (run))))
+
+(doto (defmacro with-config-override [opts & body]
+        `(with-config-override* ~opts (fn [] ~@body)))
+
+  (alter-meta! assoc :arglists '([{:keys [switches secret-keys], :or {:keys [switches secret-keys]}} & body])))
