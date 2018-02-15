@@ -1,5 +1,6 @@
 (ns nomad.config
   (:require [buddy.core.codecs :as bc]
+            [buddy.core.codecs.base64 :as b64]
             [buddy.core.crypto :as b]
             [buddy.core.nonce :as bn]
             [clojure.set :as set]
@@ -10,19 +11,22 @@
 (defrecord Secret [key-id cipher-text])
 
 (defn generate-key []
-  (bc/bytes->hex (bn/random-bytes 32)))
+  (bc/bytes->str (b64/encode (bn/random-bytes 32))))
 
 (def ^:private block-size
   (b/block-size (b/block-cipher :aes :cbc)))
 
 (defn decrypt [cipher-text secret-key]
-  (let [[iv cipher-bytes] (map byte-array (split-at block-size (bc/hex->bytes cipher-text)))]
-    (edn/read-string (b/decrypt cipher-bytes (bc/hex->bytes secret-key) iv))))
+  (let [[iv cipher-bytes] (map byte-array (split-at block-size (b64/decode cipher-text)))]
+    (edn/read-string (b/decrypt cipher-bytes (b64/decode (bc/str->bytes secret-key)) iv))))
 
 (defn encrypt [plain-obj secret-key]
   (let [iv (bn/random-bytes block-size)]
-    (str (bc/bytes->hex iv)
-         (bc/bytes->hex (b/encrypt (bc/str->bytes (pr-str plain-obj)) (bc/hex->bytes secret-key) iv)))))
+    (->> [iv (b/encrypt (bc/str->bytes (pr-str plain-obj)) (b64/decode (bc/str->bytes secret-key)) iv)]
+         (mapcat seq)
+         byte-array
+         b64/encode
+         bc/bytes->str)))
 
 (defn- apply-secrets [config secret-keys]
   (w/postwalk (fn [v]
