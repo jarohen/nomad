@@ -1,14 +1,74 @@
 * Changelog
+** 0.9.x
+0.9.x is a significant change to the way Nomad works. We're no longer storing
+config in one imported EDN file, preferring instead to keep configuration inline
+next to the code it's configuring.
+
+In terms of backwards compatibility - users of 0.7.x can still use the =nomad=
+namespace exactly as before; users of 0.8.x pre-releases (of which I doubt there
+are many) can find the functions under the =nomad.temp-080-beta= namespace.
+
+Both of these will be removed in a future release.
+
+Migration guide:
+- Firstly, move your configuration from EDN into the relevant CLJ namespaces in
+  a =defconfig= declaration, as described in the README.
+- =nomad/environments=, =nomad/hosts= and =nomad/instances= have all been
+  replaced by a single notion of 'switches' (which can be whatever you want them
+  to be).
+  #+BEGIN_SRC clojure
+    ;; --- previously
+    {:db {:host "dev-host"
+          :username "db-user"
+          :port 5432}
+
+     :nomad/environments {"beta" {:db {:host "beta-host"
+                                       :username "beta-user"}}
+                          "live" {:db {:host "live-host"
+                                       :username "live-user"}}}}
+
+    (let [{:keys [host username port]} (:db (nomad/read-config "my-config.edn"))]
+      ...)
+
+
+    ;; --- now
+
+    (:require [nomad.config :as n])
+
+    (n/set-defaults {:switches #{...}}) ; once, at application startup
+
+    (defconfig *db-config*
+      (merge {:port 5432}
+             (n/switch
+               :beta {:host "beta-host"
+                      :username "beta-user"}
+               :live {:host "live-host"
+                      :username "live-user"}
+               {:host "dev-host"
+                :username "db-user"})))
+
+    (let [{:keys [host username port]} *db-config*]
+      ...)
+  #+END_SRC
+- =#nomad/file=, =#nomad/resource=, =#nomad/env-var=, =#nomad/edn-env-var=,
+  =#nomad/jvm-prop=, =#nomad/edn-jvm-prop= and =#nomad/snippet= data readers are
+  no longer required - use standard clojure.core functions/java interop
+- =#nomad/secret= (0.8.0-beta only) - use =(n/secret <key-id> <cipher-text>=. Secret keys and
+  cipher text are now expected in base64 format for brevity - use =n/hex->b64=
+  to convert existing keys/cipher-text. =n/encrypt= now returns b64-encoded
+  cipher-text too.
+
+** 0.8.x
+The 0.8.x development branch was a lot of iterations around the core idea. This
+eventually made it to a beta-quality release, but I was never really convinced
+about the changes, so it never had a stable release.
 
 ** 0.7.x
-
 *** 0.7.3
-
 Update get-hostname to use Java interop rather than shelling out - thanks [[https://github.com/nha][Nicolas Ha]]!
 
 Thanks also to [[https://github.com/ganmacs][Yuta Iwama]], for refactoring the deep-merge implementation, and
 [[https://github.com/sumbach][Sam Umbach]] for a doc fix
-
 
 *** 0.7.2
 
