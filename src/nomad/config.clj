@@ -8,6 +8,9 @@
             [clojure.string :as s]
             [clojure.walk :as w]))
 
+(def ^:dynamic *opts* nil)
+(def !clients (atom #{}))
+
 (defrecord Secret [key-id cipher-text])
 
 (defn generate-key []
@@ -16,39 +19,24 @@
 (def ^:private block-size
   (b/block-size (b/block-cipher :aes :cbc)))
 
-(defn decrypt [cipher-text secret-key]
-  (let [[iv cipher-bytes] (map byte-array (split-at block-size (b64/decode cipher-text)))]
-    (edn/read-string (b/decrypt cipher-bytes (b64/decode (bc/str->bytes secret-key)) iv))))
+(defn- resolve-secret-key [secret-key]
+  (cond
+    (string? secret-key) secret-key
+    (keyword? secret-key) (or (get (:secret-keys *opts*) secret-key)
+                              (throw (ex-info "missing secret-key" {"secret-key" secret-key})))
+    :else (throw (ex-info "invalid secret-key" {:secret-key secret-key}))))
 
-(defn encrypt [plain-obj secret-key]
+(defn encrypt [secret-key plain-obj]
   (let [iv (bn/random-bytes block-size)]
-    (->> [iv (b/encrypt (bc/str->bytes (pr-str plain-obj)) (b64/decode (bc/str->bytes secret-key)) iv)]
+    (->> [iv (b/encrypt (bc/str->bytes (pr-str plain-obj)) (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv)]
          (mapcat seq)
          byte-array
          b64/encode
          bc/bytes->str)))
 
-(defn- apply-secrets [config secret-keys]
-  (w/postwalk (fn [v]
-                (if (instance? Secret v)
-                  (let [{:keys [key-id cipher-text]} v]
-                    (if-let [secret-key (get secret-keys key-id)]
-                      (decrypt cipher-text secret-key)
-                      (throw (ex-info "missing secret-key" {:key-id key-id}))))
-
-                  v))
-              config))
-
-(def ^:dynamic *opts* nil)
-(def !clients (atom #{}))
-
-(defn secret
-  ([key-id cipher-text]
-   (secret (:secret-keys *opts*) key-id cipher-text))
-  ([secret-keys key-id cipher-text]
-   (if-let [secret-key (get secret-keys key-id)]
-     (decrypt cipher-text secret-key)
-     (throw (ex-info "missing secret-key" {:key-id key-id})))))
+(defn decrypt [secret-key cipher-text]
+  (let [[iv cipher-bytes] (map byte-array (split-at block-size (b64/decode cipher-text)))]
+    (edn/read-string (b/decrypt cipher-bytes (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv))))
 
 (defmacro switch*
   "Takes a set of switch/expr clauses, and an optional default value.
