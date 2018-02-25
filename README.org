@@ -15,6 +15,55 @@ Add the *nomad* dependency to your =project.clj=
 
 Please see the Changelog for more details.
 
+*** Rationale
+
+In an ideal world, we'd choose to declare configuration as a vanilla Clojure
+map, and access it as such, from anywhere, and everything would Just Work™.
+
+Nomad aims to get as close to that as possible. In doing so, it makes a few
+opinionated decisions:
+
+- Configuration is declared *near* the code it is configuring - i.e. not in an
+  EDN file, not in environment variables, not in a separate infrastructure
+  repository, not in deploy scripts, etc etc etc. This locality allows us to
+  *reason* about how the code will behave in certain environments without having
+  to audit an entire system, and aids us when we come to adding new
+  configuration variables.
+
+  Sure, we'll always need to allow whatever's bootstrapping our
+  application to alter the behaviour in some way (Nomad relies on passing in a
+  set of 'switches', for example), but let's *minimise* it.
+
+- Configuration is declared in *Clojure* - this gives us the full flexibility of
+  normal Clojure functions to build/compose our configuration as necessary. In
+  our experience, configuration libraries often tend to try to replicate a full
+  language trying to emulate certain behaviours - fallbacks/defaults,
+  environment variable parsing and composing multiple configuration files, to
+  name a few.
+
+  Let's just use Clojure core/simple Java interop over a config-specific DSL -
+  they're good at this.
+
+  Is there a possibility of this freedom getting abused, and the boundary
+  between 'configuration' and code getting blurred? Sure. I'm trusting you to
+  know when your configuration goes significantly beyond 'just a map', though.
+
+*** Migrating from 0.7.x/0.8.x betas
+
+I had a significant re-think of what I wanted from a configuration library
+between 0.7.x/0.8.x and 0.9.x, based on learnings from using it in a number of
+non-trivial applications.
+
+- The original 0.7.x behaviour will be maintained for the time being, in the
+  original =nomad= namespace, although will be removed in a later release.
+- The 0.8.x behaviour never made it to a stable release, and so will likely be
+  removed in the very near future.
+- 0.9.x will remain pre-release until I've used it for a while, in anger.
+
+There is a migration guide for both of these versions in the changelog.
+
+** Getting started
+
 ** Bugs/features/suggestions/questions?
 
 Please feel free to submit bug reports/patches etc through the GitHub
