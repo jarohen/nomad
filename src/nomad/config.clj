@@ -79,8 +79,8 @@
                                ~config))
                            memoize)]
        (doto (def ~(-> sym (with-meta {:dynamic true}))
-               ~@(when *opts*
-                   [`(~config-sym *opts*)]))
+               (when *opts*
+                 (~config-sym *opts*)))
          (alter-meta! assoc :nomad/config ~config-sym)
          add-client!))))
 
