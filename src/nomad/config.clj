@@ -109,12 +109,9 @@
         run (reduce (fn [f client]
                       (fn []
                         (if-let [config-var (resolve client)]
-                          (let [updated-config (eval-config config-var opts-override)]
-                            (try
-                              (push-thread-bindings {config-var updated-config})
-                              (f)
-                              (finally
-                                (pop-thread-bindings)))))))
+                          (with-bindings {config-var (doto (eval-config config-var opts-override) (prn config-var))}
+                            (f))
+                          (f))))
                     (fn []
                       (f))
                     @!clients)]
