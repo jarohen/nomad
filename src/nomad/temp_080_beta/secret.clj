@@ -1,8 +1,10 @@
 (ns nomad.temp-080-beta.secret
   (:require [buddy.core.codecs :as bc]
+            [buddy.core.codecs.base64 :as b64]
             [buddy.core.crypto :as b]
             [buddy.core.nonce :as bn]
-            [clojure.tools.reader.edn :as edn]))
+            [clojure.tools.reader.edn :as edn]
+            [nomad.config :as n]))
 
 (defn- calculate-padding-length [{:keys [byte-count block-size]}]
   (mod (- block-size
@@ -55,6 +57,18 @@
       (.processBlock cypher cypher-bytes block-idx plain-bytes block-idx))
 
     (edn/read-string (String. (unpad plain-bytes block-size) "utf-8"))))
+
+(defn ->b64-cipher-text [key-id hex]
+  (n/encrypt key-id (decrypt hex (-> (get-in n/*opts* [:secret-keys key-id])
+                                     bc/str->bytes
+                                     b64/decode
+                                     bc/bytes->hex))))
+
+(defn ->b64-key [secret-key]
+  (-> secret-key
+      bc/hex->bytes
+      b64/encode
+      bc/bytes->str))
 
 (defn encrypt [plain-obj secret-key]
   (let [cypher (make-cypher)
