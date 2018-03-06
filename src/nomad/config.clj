@@ -115,7 +115,7 @@
         run (reduce (fn [f client]
                       (fn []
                         (if-let [config-var (resolve client)]
-                          (with-bindings {config-var (doto (eval-config config-var opts-override) (prn config-var))}
+                          (with-bindings {config-var (eval-config config-var opts-override)}
                             (f))
                           (f))))
                     (fn []
