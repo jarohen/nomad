@@ -49,11 +49,17 @@
     <default-expr>)"
   {:style/indent 1}
   [switches & clauses]
-
-  `(condp #(contains? %2 %1) ~switches
-     ~@clauses
-     ~@(when (zero? (mod (count clauses) 2))
-         [nil])))
+  (let [switches-sym (gensym 'switches)]
+    `(let [~switches-sym (set ~switches)]
+       (cond
+         ~@(for [[clause expr] (partition 2 clauses)
+                 form [`(some ~switches-sym ~(cond
+                                               (set? clause) clause
+                                               (keyword? clause) #{clause}))
+                       expr]]
+             form)
+         :else ~(when (pos? (mod (count clauses) 2))
+                  (last clauses))))))
 
 (defmacro switch
   "Takes a set of switch/expr clauses, and an optional default value.
