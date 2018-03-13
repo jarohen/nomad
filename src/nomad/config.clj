@@ -93,7 +93,7 @@
   (alter-var-root #'*opts* merge defaults)
   (doseq [client @!clients]
     (when-let [config-var (resolve client)]
-      (alter-var-root config-var (constantly (eval-config config-var {:switches switches, :secret-keys secret-keys, :override-switches override-switches}))))))
+      (alter-var-root config-var (constantly (eval-config config-var *opts*))))))
 
 (defn with-config-override* [{:keys [switches secret-keys override-switches] :as opts-override} f]
   (let [opts-override (merge *opts* opts-override)
