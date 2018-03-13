@@ -54,8 +54,7 @@
                          [(first opts+clauses) (rest opts+clauses)]
                          [{} opts+clauses])]
     `(let [{override-key# ::override-key} ~opts
-           ~switches-sym (-> (set (:switches *opts*))
-                             (cond-> override-key# (#'apply-override-key override-key#)))]
+           ~switches-sym (set (:switches *opts*))]
        (cond
          ~@(for [[clause expr] (partition 2 clauses)
                  form [`(some ~switches-sym ~(cond
@@ -82,27 +81,21 @@
          (alter-meta! assoc :nomad/config ~config-sym)
          add-client!))))
 
-(defn- parse-switch [switch]
-  (if-let [[_ switch-ns switch-name] (re-matches #"(.+?)/(.+)" switch)]
-    (keyword switch-ns switch-name)
-    (keyword switch)))
+(defn parse-switches [switches]
+  (some-> switches
+          (s/split #",")
+          (->> (into [] (map keyword)))))
 
-(def env-switches
-  (-> (or (System/getenv "NOMAD_SWITCHES")
-          (System/getProperty "nomad.switches"))
-      (some-> (s/split #","))
-      (->> (into [] (map parse-switch)))))
+(defn eval-config [config-var {:keys [switches secret-keys override-switches]}]
+  ((:nomad/config (meta config-var)) {:switches (get override-switches config-var switches), :secret-keys secret-keys}))
 
-(defn eval-config [config-var {:keys [switches secret-keys]}]
-  ((:nomad/config (meta config-var)) {:switches switches, :secret-keys secret-keys}))
-
-(defn set-defaults! [{:keys [switches secret-keys], :as defaults}]
+(defn set-defaults! [{:keys [switches secret-keys override-switches], :as defaults}]
   (alter-var-root #'*opts* merge defaults)
   (doseq [client @!clients]
     (when-let [config-var (resolve client)]
-      (alter-var-root config-var (constantly (eval-config config-var {:switches switches, :secret-keys secret-keys}))))))
+      (alter-var-root config-var (constantly (eval-config config-var {:switches switches, :secret-keys secret-keys, :override-switches override-switches}))))))
 
-(defn with-config-override* [{:keys [switches secret-keys] :as opts-override} f]
+(defn with-config-override* [{:keys [switches secret-keys override-switches] :as opts-override} f]
   (let [opts-override (merge *opts* opts-override)
         run (reduce (fn [f client]
                       (fn []
@@ -119,4 +112,4 @@
 (doto (defmacro with-config-override [opts & body]
         `(with-config-override* ~opts (fn [] ~@body)))
 
-  (alter-meta! assoc :arglists '([{:keys [switches secret-keys] :as opts-override} & body])))
+  (alter-meta! assoc :arglists '([{:keys [switches secret-keys override-switches] :as opts-override} & body])))
