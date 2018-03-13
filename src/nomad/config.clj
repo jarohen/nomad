@@ -38,29 +38,6 @@
   (let [[iv cipher-bytes] (map byte-array (split-at block-size (b64/decode cipher-text)))]
     (edn/read-string (b/decrypt cipher-bytes (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv))))
 
-(defmacro switch*
-  "Takes a set of switch/expr clauses, and an optional default value.
-  Returns the configuration from the first active switch, or the default if none are active, or nil.
-
-  (n/switch* #{:active :switches}
-    <switch> <expr>
-    <switch-2> <expr-2>
-    ...
-    <default-expr>)"
-  {:style/indent 1}
-  [switches & clauses]
-  (let [switches-sym (gensym 'switches)]
-    `(let [~switches-sym (set ~switches)]
-       (cond
-         ~@(for [[clause expr] (partition 2 clauses)
-                 form [`(some ~switches-sym ~(cond
-                                               (set? clause) clause
-                                               (keyword? clause) #{clause}))
-                       expr]]
-             form)
-         :else ~(when (pos? (mod (count clauses) 2))
-                  (last clauses))))))
-
 (defmacro switch
   "Takes a set of switch/expr clauses, and an optional default value.
   Returns the configuration from the first active switch, or the default if none are active, or nil.
@@ -71,8 +48,23 @@
     ...
     <default-expr>)"
   {:style/indent 0}
-  [& clauses]
-  `(switch* (:switches *opts*) ~@clauses))
+  [& opts+clauses]
+  (let [switches-sym (gensym 'switches)
+        [opts clauses] (if (map? (first opts+clauses))
+                         [(first opts+clauses) (rest opts+clauses)]
+                         [{} opts+clauses])]
+    `(let [{override-key# ::override-key} ~opts
+           ~switches-sym (-> (set (:switches *opts*))
+                             (cond-> override-key# (#'apply-override-key override-key#)))]
+       (cond
+         ~@(for [[clause expr] (partition 2 clauses)
+                 form [`(some ~switches-sym ~(cond
+                                               (set? clause) clause
+                                               (keyword? clause) #{clause}))
+                       expr]]
+             form)
+         :else ~(when (pos? (mod (count clauses) 2))
+                  (last clauses))))))
 
 (defn add-client! [var]
   (let [{var-ns :ns, var-name :name} (meta var)]
