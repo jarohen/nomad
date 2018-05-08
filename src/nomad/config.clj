@@ -96,18 +96,14 @@
       (alter-var-root config-var (constantly (eval-config config-var *opts*))))))
 
 (defn with-config-override* [{:keys [switches secret-keys override-switches] :as opts-override} f]
-  (let [opts-override (merge *opts* opts-override)
-        run (reduce (fn [f client]
-                      (fn []
-                        (if-let [config-var (resolve client)]
-                          (with-bindings {config-var (eval-config config-var opts-override)}
-                            (f))
-                          (f))))
-                    (fn []
-                      (f))
-                    @!clients)]
+  (let [opts-override (merge *opts* opts-override)]
     (binding [*opts* opts-override]
-      (run))))
+      (with-bindings (into {}
+                           (keep (fn [client]
+                                   (when-let [config-var (resolve client)]
+                                     [config-var (eval-config config-var opts-override)])))
+                           @!clients)
+        (f)))))
 
 (doto (defmacro with-config-override [opts & body]
         `(with-config-override* ~opts (fn [] ~@body)))
