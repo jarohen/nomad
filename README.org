@@ -58,7 +58,6 @@ non-trivial applications.
   original =nomad= namespace, although will be removed in a later release.
 - The 0.8.x behaviour never made it to a stable release, and so will likely be
   removed in the very near future.
-- 0.9.x will remain pre-release until I've used it for a while, in anger.
 
 There is a migration guide for both of these versions in the changelog.
 
