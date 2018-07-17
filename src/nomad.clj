@@ -1,9 +1,19 @@
-(ns nomad
+(ns ^:deprecated nomad
   (:require [clojure.java.io :as io]
-            [nomad.map :refer [deep-merge]]
             [clojure.tools.reader.edn :as edn]
             [clojure.walk :refer [postwalk-replace]])
   (:import [java.net InetAddress]))
+
+(defn- deep-merge
+  "Like merge, but merges maps recursively.
+
+  (deep-merge {:a {:b {:c 1 :d {:x 1 :y 2}} :e 3} :f 4}
+              {:a {:b {:c 2 :d {:z 9} :z 3} :e 100}})
+  -> {:a {:b {:c 2, :d {:x 1, :y 2, :z 9}, :z 3}, :e 100}, :f 4}"
+  [& maps]
+  (if (every? map? maps)
+    (apply merge-with deep-merge maps)
+    (last maps)))
 
 (defprotocol ConfigFile
   (etag [_])
@@ -175,19 +185,21 @@
 
 ;; ---------- PUBLIC API ----------
 
-(defn read-config [file-or-resource & [{:keys [cached-config]}]]
+;; This incarnation of Nomad has been deprecated. Please see `nomad.config` and the README for more details.
+
+(defn ^:deprecated read-config [file-or-resource & [{:keys [cached-config]}]]
   (let [config-map (or (meta cached-config)
                        {:general {:config-file file-or-resource}})
         updated-config (update-config config-map)]
     (merge-configs updated-config)))
 
-(defmacro with-location-override [override-map & body]
+(defmacro ^:deprecated with-location-override [override-map & body]
   `(with-redefs [~@(mapcat (fn [[override-sym override-value]]
                              [(symbol (str "nomad/get-" (name override-sym))) `(constantly ~override-value)])
                            override-map)]
      ~@body))
 
-(defmacro defconfig [name file-or-resource & [{:keys [data-readers]}]]
+(defmacro ^:deprecated defconfig [name file-or-resource & [{:keys [data-readers]}]]
   `(let [!cached-config# (atom nil)]
      (defn ~name []
        (swap! !cached-config#
