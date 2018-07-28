@@ -70,7 +70,7 @@
 
 (defmacro defconfig [sym config]
   (let [config-sym (gensym 'config)
-        set-var-sym (gensym (symbol (format "set-%s-config-var!" sym)))
+        set-var-sym (gensym (symbol (str "set-" sym "-config-var!")))
         fq-sym (symbol (str *ns*) (name sym))]
     `(do
        (declare ^:dynamic ~sym)
@@ -82,21 +82,31 @@
                                  ~config))
                              memoize)
 
-             ~set-var-sym ~(if (:ns &env)
-                             `(fn [v#]
-                                (set! (var ~sym) v#))
-
-                             `(fn [v#]
-                                (alter-var-root (var ~sym) (constantly v#))))
-
-             ret# (def ~(-> sym (with-meta {:dynamic true
-                                            :nomad/eval-config config-sym
-                                            :nomad/set-config-var! set-var-sym}))
+             ret# (def ~(-> sym (with-meta {:dynamic true}))
                     (when *opts*
                       (~config-sym *opts*)))]
 
+         ~(when-not (:ns &env)
+            `(alter-meta! (var ~fq-sym) assoc :nomad/eval-config ~config-sym))
 
-         (swap! !clients assoc '~fq-sym (fn [] (resolve '~fq-sym)))
+         (swap! !clients assoc '~fq-sym ~(if (:ns &env)
+                                           `{:eval-config ~config-sym
+                                             :set-config-var! (fn [v#]
+                                                                (set! ~fq-sym v#))
+                                             :config-var (var ~fq-sym)}
+
+                                           `{:eval-config (fn [opts#]
+                                                            (when-let [eval-config# (some-> (resolve '~fq-sym)
+                                                                                            meta
+                                                                                            :nomad/eval-config)]
+                                                              (eval-config# opts#)))
+
+                                             :set-config-var! (fn [v#]
+                                                                (when-let [config-var# (resolve '~fq-sym)]
+                                                                  (alter-var-root config-var# (constantly v#))))
+
+                                             :->config-var (fn []
+                                                             (resolve '~fq-sym))}))
 
          ret#))))
 
@@ -107,21 +117,32 @@
 
 (defn set-defaults! [{:keys [switches secret-keys override-switches], :as defaults}]
   #?(:clj (alter-var-root #'*opts* merge defaults)
-     :cljs (set! #'*opts* (merge *opts* defaults)))
+     :cljs (set! *opts* (merge *opts* defaults)))
 
-  (doseq [[config-sym ->config-var] @!clients]
-    (when-let [{:nomad/keys [eval-config set-config-var!]} (some-> (->config-var) meta)]
-      (set-config-var! (eval-config *opts*)))))
+  (doseq [{:keys [eval-config set-config-var!]} (vals @!clients)]
+    (set-config-var! (eval-config *opts*))))
 
 (defn with-config-override* [{:keys [switches secret-keys override-switches] :as opts-override} f]
   (let [opts-override (merge *opts* opts-override)]
-    (with-bindings (into {}
-                         (keep (fn [->config-var]
-                                 (when-let [config-var (->config-var)]
-                                   (let [{:nomad/keys [eval-config]} (meta config-var)]
-                                     [config-var (eval-config opts-override)]))))
-                         (vals @!clients))
-      (f))))
+    #?(:clj (with-bindings (into {}
+                                 (keep (fn [{:keys [eval-config ->config-var]}]
+                                         (when-let [config-var (->config-var)]
+                                           [config-var (eval-config opts-override)])))
+                                 (vals @!clients))
+              (f))
+
+       :cljs (let [clients @!clients
+                   initial-vals (->> clients
+                                     (into {} (map (juxt key (comp deref :config-var val)))))]
+               (try
+                 (doseq [{:keys [set-config-var! eval-config]} (vals clients)]
+                   (set-config-var! (eval-config opts-override)))
+
+                 (f)
+
+                 (finally
+                   (doseq [[sym {:keys [set-config-var!]}] clients]
+                     (set-config-var! (get initial-vals sym)))))))))
 
 (defmacro with-config-override
   {:arglists '([{:keys [switches secret-keys override-switches] :as opts-override} & body])}
