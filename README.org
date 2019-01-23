@@ -75,11 +75,11 @@ initialise Nomad - over time, we'll need to add to this:
 We then use =defconfig= to declare some configuration:
 
 #+BEGIN_SRC clojure
-  (n/defconfig *email-config*
+  (n/defconfig email-config
     {:email-behaviour :just-console-for-now})
 
   (defn email-user! [{:keys [...] :as email}]
-    (case (:email-behaviour *email-config*)
+    (case (:email-behaviour email-config)
       :just-console-for-now (prn "Would send:" email)
       :actually-send-the-email (send-email! email)))
 #+END_SRC
@@ -92,7 +92,7 @@ If I wanted to, I could use =System/getenv=, =System/getProperty=, or any
 vanilla Clojure functions etc in here:
 
 #+BEGIN_SRC clojure
-  (n/defconfig *email-config*
+  (n/defconfig email-config
     {:behaviour :actually-send-the-email
      :host (System/getenv "EMAIL_HOST")
      :port (or (some-> (System/getenv "EMAIL_PORT") Long/parseLong)
@@ -101,10 +101,6 @@ vanilla Clojure functions etc in here:
 
 This obviates the need for any kind of config DSL to retrieve/parse/default
 configuration values.
-
-Why the =*earmuffs*=? More on this later, in the 'testing your configuration'
-section - for now, though, configuration declared through =defconfig= can be
-dynamically re-bound if need be.
 
 ** Changing configuration based on location
 
@@ -125,7 +121,7 @@ a lot like Clojure's =case= macro:
   (n/set-defaults! {:switches #{:live}})
 
   ;; in your namespace
-  (n/defconfig *db-config*
+  (n/defconfig db-config
     (merge {:port 5432}
            (n/switch
              :beta {:host "beta-db-host"
@@ -139,7 +135,7 @@ a lot like Clojure's =case= macro:
               :username "local-user"})))
 
   ;; at the REPL (say)
-  (let [{:keys [host port username]} *db-config*]
+  (let [{:keys [host port username]} db-config]
     ;; in here, we get the live config, because of our earlier `set-defaults!`
     ...)
 #+END_SRC
@@ -192,13 +188,13 @@ declarations:
   ;; => "y/DwItK86ZgtUUTzz+sDCNd3rpsOuiyKmqcHIelHnRdrpr06k43NEnrraWrfUHE39ZXtLItqxZVM3hmCj1pqLw=="
 
   ;; --- in your namespace
-  (defconfig *db-config*
+  (defconfig db-config
     {:host "db-host"
      :username "db-username"
      :password (n/decrypt :my-dev-key "y/DwItK86ZgtUUTzz+sDCNd3rpsOuiyKmqcHIelHnRdrpr06k43NEnrraWrfUHE39ZXtLItqxZVM3hmCj1pqLw==")})
 
   ;; access the password like any other map key
-  (let [{:keys [host username password]} *db-config*]
+  (let [{:keys [host username password]} db-config]
     ...)
 #+END_SRC
 
@@ -208,22 +204,22 @@ Given configuration declarations are just normal Clojure variables, you can
 experiment with them at the REPL, as you would any other Clojure data structure.
 
 Nomad does offer a couple of other tools to facilitate testing, though. First,
-as mentioned earlier, =defconfig= declarations can be dynamically re-bound,
-using Clojure's standard =binding= macro:
+=defconfig= declarations can be dynamically re-bound, using Clojure's standard
+=binding= macro:
 
 #+BEGIN_SRC clojure
-  (n/defconfig *email-config*
+  (n/defconfig email-config
     {:email-behaviour :just-console-for-now})
 
   (defn email-user! [{:keys [...] :as email}]
-    (case (:email-behaviour *email-config*)
+    (case (:email-behaviour email-config)
       :just-console-for-now (prn "Would send:" email)
       :actually-send-the-email (send-email! email)))
 
   (email-user! {...})
   ;; prints the email to the console
 
-  (binding [*email-config* {:email-behaviour :actually-send-the-email}]
+  (binding [email-config {:email-behaviour :actually-send-the-email}]
     (email-user! {...}))
   ;; actually sends the email
 #+END_SRC
@@ -233,13 +229,13 @@ what switches are active, throughout your system, for the duration of the
 expression body:
 
 #+BEGIN_SRC clojure
-  (n/defconfig *email-config*
+  (n/defconfig email-config
     {:email-behaviour (n/switch
                         :live :actually-send-the-email
                         :just-console-for-now)})
 
   (defn email-user! [{:keys [...] :as email}]
-    (case (:email-behaviour *email-config*)
+    (case (:email-behaviour email-config)
       :just-console-for-now (prn "Would send:" email)
       :actually-send-the-email (send-email! email)))
 
