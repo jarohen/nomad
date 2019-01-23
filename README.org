@@ -56,8 +56,8 @@ non-trivial applications.
 
 - The original 0.7.x behaviour will be maintained for the time being, in the
   original =nomad= namespace, although will be removed in a later release.
-- The 0.8.x behaviour never made it to a stable release, and so will likely be
-  removed in the very near future.
+- The 0.8.x behaviour never made it to a stable release, and so has been
+  removed in 0.9.0-rc1.
 
 There is a migration guide for both of these versions in the changelog.
 
