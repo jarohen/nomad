@@ -10,7 +10,9 @@ painlessly between different hosts and environments.
 Add the *nomad* dependency to your =project.clj=
 
 #+BEGIN_SRC clojure
-  [jarohen/nomad "0.9.0-rc1"]
+  [jarohen/nomad "0.9.0"]
+
+  {jarohen/nomad {:mvn/version "0.9.0"}}
 #+END_SRC
 
 Please see the Changelog for more details.
