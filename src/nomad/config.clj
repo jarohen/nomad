@@ -84,7 +84,12 @@
 (defn parse-switches [switches]
   (some-> switches
           (s/split #",")
-          (->> (into [] (map keyword)))))
+          (->> (into #{} (map keyword)))))
+
+(def env-switches
+  (->> [(System/getenv "NOMAD_SWITCHES")
+        (System/getProperty "nomad.switches")]
+       (into #{} (mapcat parse-switches))))
 
 (defn eval-config [config-var {:keys [switches secret-keys override-switches]}]
   ((:nomad/config (meta config-var)) {:switches (get override-switches config-var switches), :secret-keys secret-keys}))
