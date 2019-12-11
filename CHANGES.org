@@ -58,6 +58,10 @@ Migration guide:
   to convert existing keys/cipher-text. =n/encrypt= now returns b64-encoded
   cipher-text too.
 
+
+*** 0.9.1
+Reinstated =env-switches=, which disappeared during one of the alphas.
+
 ** 0.8.x
 The 0.8.x development branch was a lot of iterations around the core idea. This
 eventually made it to a beta-quality release, but I was never really convinced
