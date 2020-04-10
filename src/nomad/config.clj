@@ -11,8 +11,6 @@
 (def ^:dynamic *opts* nil)
 (def !clients (atom #{}))
 
-(defrecord Secret [key-id cipher-text])
-
 (defn generate-key []
   (bc/bytes->str (b64/encode (bn/random-bytes 32))))
 
@@ -28,7 +26,9 @@
 
 (defn encrypt [secret-key plain-obj]
   (let [iv (bn/random-bytes block-size)]
-    (->> [iv (b/encrypt (bc/str->bytes (pr-str plain-obj)) (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv)]
+    (->> [iv (-> (pr-str plain-obj)
+                 bc/str->bytes
+                 (b/encrypt (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv))]
          (mapcat seq)
          byte-array
          b64/encode
@@ -36,7 +36,9 @@
 
 (defn decrypt [secret-key cipher-text]
   (let [[iv cipher-bytes] (map byte-array (split-at block-size (b64/decode cipher-text)))]
-    (edn/read-string (b/decrypt cipher-bytes (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv))))
+    (-> cipher-bytes
+        (b/decrypt (b64/decode (bc/str->bytes (resolve-secret-key secret-key))) iv)
+        edn/read-string)))
 
 (defmacro switch* {:style/indent 1} [opts & clauses]
   (let [switches-sym (gensym 'switches)]
