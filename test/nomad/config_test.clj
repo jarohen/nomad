@@ -14,13 +14,3 @@
              true))
     (t/is (nil? (sut/switch* opts
                   :not-this-one true)))))
-
-(def secret-key
-  "n0ZUdKFVOEulRodqekbucCxB/CSVu/Qw0aEzMReKEcE=")
-
-(t/deftest resolves-secrets
-  (t/is (= (let [cypher-text (sut/encrypt secret-key "password123")]
-             (-> (binding [sut/*opts* {:secret-keys {:my-key secret-key}}]
-                   {:db-config {:password (sut/decrypt :my-key cypher-text)}})
-                 (get-in [:db-config :password])))
-           "password123")))

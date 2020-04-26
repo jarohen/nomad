@@ -161,17 +161,17 @@ Nomad can manage your secrets for you, too. Under Nomad, these are encrypted and
 checked in to your application repository, with the encryption keys managed
 outside of your application (in whatever manner you choose).
 
-First, generate yourself an encryption key using =(n/generate-key)=
+First, require =[nomad.secrets :as ns]= and generate yourself an encryption key using =(ns/generate-key)=
 
 #+BEGIN_SRC clojure
-  (nomad.config/generate-key)
+  (ns/generate-key)
   ;; => "tvuGp8oGGbP+IQSzidYS+oXB3fhGZLpVLhMFljL0I/o="
 #+END_SRC
 
 We then pass this to Nomad as part of the call to =set-defaults!=:
 
 #+BEGIN_SRC clojure
-  (n/set-defaults! {:secret-keys {:my-dev-key "tvuGp8oGGbP+IQSzidYS+oXB3fhGZLpVLhMFljL0I/o="}})
+  (ns/set-default-keys! {:my-dev-key "tvuGp8oGGbP+IQSzidYS+oXB3fhGZLpVLhMFljL0I/o="})
 #+END_SRC
 
 Obviously, normally, this would not be checked into your application repository!
@@ -179,21 +179,21 @@ You can get it from an environment variable, an out-of-band file on the local
 disk, some external infrastructure management, some cloud key manager, or
 something else entirely - take your pick!
 
-We then encrypt credentials using =n/encrypt=, and store this cipher-text, along
+We then encrypt credentials using =ns/encrypt=, and store this cipher-text, along
 with the key-id used to encrypt the credentials, in our =defconfig=
 declarations:
 
 #+BEGIN_SRC clojure
   ;; --- at your REPL
 
-  (n/encrypt :my-dev-key "super-secure-password123")
+  (ns/encrypt :my-dev-key "super-secure-password123")
   ;; => "y/DwItK86ZgtUUTzz+sDCNd3rpsOuiyKmqcHIelHnRdrpr06k43NEnrraWrfUHE39ZXtLItqxZVM3hmCj1pqLw=="
 
   ;; --- in your namespace
   (defconfig db-config
     {:host "db-host"
      :username "db-username"
-     :password (n/decrypt :my-dev-key "y/DwItK86ZgtUUTzz+sDCNd3rpsOuiyKmqcHIelHnRdrpr06k43NEnrraWrfUHE39ZXtLItqxZVM3hmCj1pqLw==")})
+     :password (ns/decrypt :my-dev-key "y/DwItK86ZgtUUTzz+sDCNd3rpsOuiyKmqcHIelHnRdrpr06k43NEnrraWrfUHE39ZXtLItqxZVM3hmCj1pqLw==")})
 
   ;; access the password like any other map key
   (let [{:keys [host username password]} db-config]
